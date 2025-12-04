@@ -2,15 +2,15 @@
 #include <string>
 #include <iostream>
 
-int main(int argc, char* argv[]) {
+int main() {
     const int lock_max = 100; 
     std::string line;
     int cur_pos = 50, zeros = 0;
-    if (argc != 2) {
-        std::cout << "Expected ./aoc1 <input_file>\n";
-        return 1;
+    std::ifstream file("input1.txt");
+    if (!file) {
+        std::cout << "input1.txt does not exist\n";
+        exit(1);
     }
-    std::ifstream file(argv[1]);
 
     while (std::getline(file, line)) {
         char dir = line[0];
