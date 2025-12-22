@@ -11,19 +11,16 @@ def count_combs(n: int) -> int:
     n_digs = get_digs(n)
 
     cum_sum = 0
-    cnt = 0
     for j in range(2, n_digs + 1, 2):
+        cur_base = 10 ** (j // 2)
+
         l = 10 ** (j // 2 - 1)
-        k = 10 ** (j // 2) - 1
+        k = min(cur_base - 1, n // (cur_base + 1))
         for i in range(l, k + 1):
-            tmp_sum = i * (10 ** (j // 2) + 1)
-            if tmp_sum <= n:
-                cnt += 1
-                cum_sum += tmp_sum
+            cum_sum += i * (cur_base + 1)
     return cum_sum
 
 id_sum = 0
-p = 0
 for id_range in f.read().split(','):
     start, end = map(int, id_range.split('-'))
 
