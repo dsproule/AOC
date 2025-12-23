@@ -16,8 +16,8 @@ module lock_over_zero(
     logic [`DATA_WIDTH-1:0] zeros_inc, rot_mod;
     logic [`DATA_WIDTH-1:0] cur_pos, next_pos, full_rots;
 
-    assign full_rots = (rot * 16'd655) >> 16;   //  (rot / LOCK_MAX)
-    assign rot_mod = rot - (full_rots * LOCK_MAX);
+    assign full_rots = (rot * 16'd655) >> 16;       //  (rot / LOCK_MAX)
+    assign rot_mod = rot - (full_rots * LOCK_MAX);  //   rot % LOCK_MAX
 
     always_comb begin
         zeros_inc = full_rots;

@@ -14,28 +14,39 @@ pref_lookup = {}
 def count_combs(n: int) -> int:
     n_digs = get_digs(n)
 
-    seen = set()
+    # seen = set()
     cum_sum = 0
-    for n_group in range(2, n_digs + 1):
-        if n_digs % n_group == 0:
-            max_digs = n_digs // n_group
+    for group_count in range(2, n_digs + 1):
+        if n_digs % group_count == 0:
+            block_size = n_digs // group_count
 
-            base_max10 = 10 ** max_digs
-            cur_base = (base_max10 ** n_group - 1) // (base_max10 - 1)
+            # 10 ^ nk
+            cur_base = (10**n_digs - 1) // (10**block_size - 1)
 
-            lb = 10 ** (max_digs - 1) if max_digs != 1 else 1
-            ub = min(10 ** (max_digs) - 1, n // cur_base)
+            lb = 10 ** (block_size - 1) if block_size != 1 else 1
+            ub = min(10 ** (block_size) - 1, n // cur_base)
 
-            tmp_sum = 0
-            for i in range(lb, ub + 1):
-                next_calc = i * cur_base
-                
-                if next_calc not in seen:
-                    tmp_sum += next_calc
-                    seen.add(next_calc)
-            cum_sum += tmp_sum
+            # series of all possible nums
+            tmp_sum = cur_base * ((lb + ub) * (ub - lb + 1) // 2)
+
+            # subtract out non-primitives
+            prim_sub = 0
+            for r in range(1, block_size):
+                if block_size % r == 0:
+                    
+                    rep_base = sum(10 ** (r * k) for k in range(block_size // r))
+                    
+                    lb_r = 10 ** (r - 1) if r != 1 else 1
+                    ub_r = ub // rep_base
+                    
+                    if ub_r >= lb_r:
+                        cnt = ub_r - lb_r + 1
+                        prim_sub += cur_base * rep_base * (lb_r + ub_r) * cnt // 2
+
+            cum_sum += tmp_sum - prim_sub
 
     return cum_sum + pref_lookup[n_digs - 1]
+
 
 id_sum = 0
 pref_lookup[0] = pref_lookup[1] = 0
