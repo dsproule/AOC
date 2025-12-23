@@ -17,7 +17,7 @@ def count_combs(n: int) -> int:
         l = 10 ** (j // 2 - 1) - 1
         k = min(cur_base - 1, n // (cur_base + 1))
 
-        tmp_sum = (k * k + k - l * l - l) // 2
+        tmp_sum = (k + l) * (k - l + 1) // 2
         cum_sum += (cur_base + 1) * tmp_sum
     return cum_sum
 
