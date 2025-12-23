@@ -11,7 +11,6 @@ int main() {
 
     uint64_t cum_sum = 0, tmp_sum;
     while (std::getline(file, line)) {
-        // monotonically decreasing
         std::vector<int> stack;
         int bank_max = 0, top;
 
