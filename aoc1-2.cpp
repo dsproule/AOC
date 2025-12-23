@@ -12,7 +12,7 @@ int main() {
         exit(1);
     }
 
-    int next_pos;
+    int next_pos, cnt = 0;
     while (std::getline(file, line)) {
         char dir = line[0];
         int rot = std::stoi(line.substr(1));
@@ -32,6 +32,7 @@ int main() {
                 zeros += 1;
             next_pos = next_pos % lock_max;
         }
+        std::cout << cnt++ << ": cur_pos: " << cur_pos << ", next_pos: " << next_pos << "\n";
         cur_pos = next_pos;
         zeros += (cur_pos == 0);
     }

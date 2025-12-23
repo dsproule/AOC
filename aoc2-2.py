@@ -11,13 +11,15 @@ def count_combs(n: int) -> int:
     n_digs = get_digs(n)
 
     cum_sum = 0
-    for j in range(2, n_digs + 1, 2):
+    for j in range(2, n_digs + 1):
         cur_base = 10 ** (j // 2)
 
-        l = 10 ** (j // 2 - 1) - 1
+        l = 10 ** (j // 2 - 1)
         k = min(cur_base - 1, n // (cur_base + 1))
 
-        tmp_sum = (k * k + k - l * l - l) // 2
+        tmp_sum = 0
+        for i in range(l, k + 1):
+            tmp_sum += i
         cum_sum += (cur_base + 1) * tmp_sum
     return cum_sum
 
@@ -28,5 +30,4 @@ for id_range in f.read().split(','):
     id_sum += count_combs(end) - count_combs(start - 1)
     
 print(f"Id sum is: {id_sum}")
-print(f"Correct: {38437576669 == id_sum}")
 f.close()

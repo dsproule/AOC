@@ -10,4 +10,4 @@ all: $(TARGET)
 	$(CXX) $(CXXFLAGS) $^ -o $(TARGET)
 
 clean:
-	rm -f aoc
+	rm -f aoc *.vcd
