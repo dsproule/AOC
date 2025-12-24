@@ -2,10 +2,11 @@
 
 module aoc3_tb;
 
-    localparam MAX_CAP = 4;
+    localparam MAX_CAP = 12;
 
-    logic clock, reset, data_in_valid, full, empty, data_out_valid, newline;
-    logic [`DATA_WIDTH-1:0] data_in, data_out, nums_left;
+    logic clock, reset;
+    logic data_in_valid, full, empty, data_out_valid, newline;
+    logic [`DATA_WIDTH-1:0] data_in, data_out;
     logic [$clog2(MAX_CAP):0] size;
 
     top #(.line_length(15)) dut (.*);
@@ -30,12 +31,33 @@ module aoc3_tb;
         clock = 0;
         reset = 1;
         data_in_valid = 1'b0;
-        nums_left = 8;
         repeat (3) @(negedge clock);
         reset = 0;
+        done  = 0;
+
         @(negedge clock);
-        data_in_valid = 1'b1;
-        data_in = `DATA_WIDTH'd30;
+        while (!done) begin
+            c = $fgetc(fd);
+
+            if (c == -1) begin
+                done = 1;
+            end
+            else if (c == 10) begin
+                // newline — do nothing
+                for (int dbg_i = 0; dbg_i < MAX_CAP; dbg_i++)
+                    $write("%0d", dut.stack.data[dbg_i]);
+                $display("");
+                @(negedge clock);
+                reset = 1;
+                repeat (3) @(negedge clock);
+                reset = 0;
+            end
+            else begin
+                data_in = c - "0";
+                data_in_valid = 1'b1;
+            end
+            @(negedge clock);
+        end
         
 
         $fclose(fd);

@@ -18,6 +18,15 @@ module top #(
         .data_in_valid(data_in_valid), .data_in(data_in),
         .nums_left(line_length - i),
         
-        .full());
+        .full()
+    );
+
+    always_ff @(posedge clock) begin
+        if (reset) begin
+            i <= -1;
+        end else if (data_in_valid) begin
+            i <= i + 1;
+        end
+    end
 
 endmodule
