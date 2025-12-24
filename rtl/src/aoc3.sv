@@ -24,27 +24,26 @@ module long_stack #(
     assign full  = (sp == MAX_CAP);
     assign empty = (sp == '0);
 
-    always_comb begin
-        if (empty) begin
-            next_sp = (data_in_valid) ? sp + 1 : sp;
-        end else begin
-            next_sp = (data_in_valid && !full) ? sp + 1 : sp;
-        end        
-    end
+    assign next_sp = (data_in_valid && !full) ? sp + 1 : sp;
     
     // long-pop logic ---------------
     logic [MAX_CAP-1:0] less_than, less_than_suf;
-    logic [$clog2(MAX_CAP):0] insert_i;
+    logic [$clog2(MAX_CAP):0] insert_i, forward_i;
 
     always_comb begin
-        insert_i = sp - 1;
+        forward_i = sp - 1;
         for (int i = MAX_CAP - 1; i >= 0; i--) begin
             less_than[i] = (data[i] < data_in) && (i <= sp) && (nums_left >= MAX_CAP - i + 1);
 
             // after the first iter build the prefs
             less_than_suf[i] = (i == MAX_CAP - 1) ? 
                                 less_than[i] : less_than[i] & less_than_suf[i + 1];
+
+            if (less_than_suf[i])
+                forward_i = i;
         end
+
+        insert_i = (|less_than_suf) ? forward_i + 1: next_sp;
     end
 
     logic insert_valid;
@@ -57,8 +56,8 @@ module long_stack #(
                 data[reset_i] <= -1;
         end else begin
             if (data_in_valid && insert_valid)
-                data[(|less_than_suf) ? insert_i : sp] <= data_in;
-            sp <= next_sp;
+                data[insert_i - 1] <= data_in;
+            sp <= insert_i;
         end
     end
 

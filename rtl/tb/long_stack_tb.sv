@@ -52,7 +52,19 @@ module aoc3_tb;
         data_in = `DATA_WIDTH'd25;
         @(negedge clock);
         data_in_valid = 1'b0;
-        repeat (3) @(negedge clock);
+        repeat (4) @(negedge clock);
+        data_in_valid = 1'b1;
+        data_in = `DATA_WIDTH'd29;
+        @(negedge clock);
+        
+        data_in = `DATA_WIDTH'd29;
+        @(negedge clock);
+        
+        data_in = `DATA_WIDTH'd29;
+        @(negedge clock);
+        
+        data_in = `DATA_WIDTH'd32;
+        @(negedge clock);
 
         $fclose(fd);
         $finish;
