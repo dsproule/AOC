@@ -32,7 +32,6 @@ int main() {
                 zeros += 1;
             next_pos = next_pos % lock_max;
         }
-        std::cout << cnt++ << ": cur_pos: " << cur_pos << ", next_pos: " << next_pos << "\n";
         cur_pos = next_pos;
         zeros += (cur_pos == 0);
     }
