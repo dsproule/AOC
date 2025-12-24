@@ -58,6 +58,7 @@ module aoc1_tb;
         end
         en = 1'b0;
         $display("Code is: %0d", zeros);
+        $display("Correct: %0b", zeros == 5899);
 
         $fclose(fd);
         $finish;

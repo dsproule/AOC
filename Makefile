@@ -18,4 +18,4 @@ aoc3_sv: rtl/src/aoc3_stack.sv
 	iverilog $(VFLAGS) $^ -o aoc -I./rtl
 
 clean:
-	rm -f aoc *.vcd
+	rm -f aoc *.vcd *.gtkw
