@@ -1,2 +1,2 @@
-aoc1
+x aoc1
 aoc2

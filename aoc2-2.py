@@ -14,14 +14,13 @@ pref_lookup = {}
 def count_combs(n: int) -> int:
     n_digs = get_digs(n)
 
-    # seen = set()
     cum_sum = 0
     for group_count in range(2, n_digs + 1):
         if n_digs % group_count == 0:
             block_size = n_digs // group_count
 
-            # 10 ^ nk
-            cur_base = (10**n_digs - 1) // (10**block_size - 1)
+            # 10 ^ nk (this is used to create the num again)
+            cur_base = (10 ** n_digs - 1) // (10 ** block_size - 1)
 
             lb = 10 ** (block_size - 1) if block_size != 1 else 1
             ub = min(10 ** (block_size) - 1, n // cur_base)

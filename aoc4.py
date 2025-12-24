@@ -50,5 +50,5 @@ while rows[1]:
     rows[1] = rows[2]
     rows[2] = f.readline()[:-1]
 
-print(takes)
+print(f"Answer is: {takes}")
 f.close()
