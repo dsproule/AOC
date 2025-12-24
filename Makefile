@@ -12,6 +12,8 @@ all: $(TARGET)
 %_py: sw/%.py
 	python3 $^
 
+aoc3_sv: rtl/src/aoc3_stack.sv
+
 %_sv: rtl/src/%.sv rtl/tb/%_tb.sv
 	iverilog $(VFLAGS) $^ -o aoc -I./rtl
 
