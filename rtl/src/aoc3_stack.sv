@@ -42,7 +42,7 @@ module long_stack #(
             forward_cand[i] = (nums_left >= MAX_CAP - i + 1);
 
             // after the first iter build the prefs
-            less_than_suf[i] = (i == sp - 1) ? 
+            less_than_suf[i] = (i == sp - 1 || i == MAX_CAP - 1) ? 
                                 forward_cand[i] & less_than[i] : forward_cand[i] & less_than[i] & less_than_suf[i + 1];
 
             if (less_than_suf[i])

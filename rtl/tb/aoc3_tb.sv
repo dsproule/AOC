@@ -7,9 +7,9 @@ module aoc3_tb;
     logic clock, reset;
     logic data_in_valid, full, empty, data_out_valid, newline;
     logic [`DATA_WIDTH-1:0] data_in;
-    logic [(`DATA_WIDTH * 2)-1:0] data_out, cum_sum;
+    logic [(`DATA_WIDTH * 2)-1:0] data_out, cum_sum = 0;
 
-    top #(.line_length(15)) dut (.*);
+    top #(.line_length(100)) dut (.*);
 
     initial forever #5 clock = ~clock;
 
@@ -17,7 +17,6 @@ module aoc3_tb;
         $dumpfile("aoc.vcd");
         $dumpvars(0, aoc3_tb);
     end
-
 
     int fd;
     int c;
@@ -30,9 +29,8 @@ module aoc3_tb;
         newline = 1;
         data_in_valid = 1'b0;
         
-        repeat (11) @(negedge clock);
+        repeat (12) @(negedge clock);
         @(negedge clock);
-        $display("%0d", data_out);
         reset = 1;
         
         @(negedge clock);
@@ -40,10 +38,13 @@ module aoc3_tb;
         reset = 0;
     endtask
 
+    task print_stack;
+        for (int stack_i = 0; stack_i < dut.stack.sp; stack_i++)
+            $write("%0d", dut.stack.data[stack_i]);
+    endtask
+
     always_ff @(posedge clock) begin
-        if (reset) begin
-            cum_sum <= '0;
-        end else if (data_out_valid) begin
+        if (data_out_valid & ~reset) begin
             cum_sum <= cum_sum + data_out;
         end
     end
@@ -81,6 +82,7 @@ module aoc3_tb;
         
 
         $display("Answer is: %0d", cum_sum);
+        $display("Correct: %0b", cum_sum == 167523425665348);
         $fclose(fd);
         $finish;
     end

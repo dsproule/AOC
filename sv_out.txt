@@ -1,0 +1,1 @@
+VCD info: dumpfile aoc.vcd opened for output.
