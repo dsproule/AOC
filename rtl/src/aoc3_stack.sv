@@ -5,8 +5,9 @@ module long_stack #(
 )(
     input logic clock, reset, data_in_valid,
     input logic [`DATA_WIDTH-1:0] data_in, nums_left,
+    input logic [$clog2(MAX_CAP):0] peek_i,
 
-    output logic full
+    output logic [`DATA_WIDTH-1:0] data_out
 );
 
     logic [`DATA_WIDTH-1:0] data [MAX_CAP-1:0];
@@ -24,7 +25,9 @@ module long_stack #(
     // Signal updates ---------------    
     logic [$clog2(MAX_CAP):0] sp, next_sp;
 
-    assign full = (sp == MAX_CAP);
+    logic full;
+    assign full     = (sp == MAX_CAP);
+    assign data_out = data[peek_i];
 
     assign next_sp = (data_in_valid && !full) ? sp + 1 : sp;
     
