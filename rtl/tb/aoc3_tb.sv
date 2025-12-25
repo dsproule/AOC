@@ -9,7 +9,7 @@ module aoc3_tb;
     logic [`DATA_WIDTH-1:0] data_in;
     logic [(`DATA_WIDTH * 2)-1:0] data_out, cum_sum = 0;
 
-    top #(.line_length(100)) dut (.*);
+    top #(.LINE_LENGTH(100)) dut (.*);
 
     initial forever #5 clock = ~clock;
 
@@ -20,8 +20,6 @@ module aoc3_tb;
 
     int fd;
     int c;
-    int cmd;
-    int value;
     int done;
     
     task line_done;

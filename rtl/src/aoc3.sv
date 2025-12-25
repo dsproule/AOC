@@ -1,7 +1,7 @@
 `include "common.svh"
 
 module top #(
-    parameter line_length = 15
+    parameter LINE_LENGTH = 15
 )(
     input logic clock, reset, data_in_valid,
     input logic newline,
@@ -19,7 +19,7 @@ module top #(
     long_stack #(.MAX_CAP(MAX_CAP)) stack (
         .clock(clock), .reset(reset), 
         .data_in_valid(data_in_valid), .data_in(data_in),
-        .nums_left(line_length - i), .peek_i(peek_i),
+        .nums_left(LINE_LENGTH - i), .peek_i(peek_i),
         
         .data_out(stack_out)
     );
