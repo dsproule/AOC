@@ -13,6 +13,7 @@ all: $(TARGET)
 	python3 $^
 
 aoc3_sv: rtl/src/aoc3_stack.sv
+aoc2_sv: rtl/src/aoc2_utils.sv
 
 # Simulation
 %_sv: rtl/src/%.sv rtl/tb/%_tb.sv
