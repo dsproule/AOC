@@ -12,16 +12,6 @@ module long_stack #(
 
     logic [`DATA_WIDTH-1:0] data [MAX_CAP-1:0];
 
-    // Remove after debug ---------------
-    genvar dbg_i;
-    generate for (dbg_i = 0; dbg_i < MAX_CAP; dbg_i++) begin : dbg
-        logic [`DATA_WIDTH-1:0] dbg_data;
-        logic diff;
-
-        assign dbg_data = data[dbg_i];
-        assign diff = (nums_left >= MAX_CAP - dbg_i + 1);
-    end endgenerate
-
     // Signal updates ---------------    
     logic [$clog2(MAX_CAP):0] sp, next_sp;
 
