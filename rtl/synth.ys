@@ -1,0 +1,14 @@
+# Read converted verilog
+read_verilog converted.v
+
+# Set top module
+hierarchy -top group_count -check
+
+# Synthesize
+synth -top group_count
+
+# Show statistics
+stat
+
+# Optional: more detailed breakdown
+stat -width

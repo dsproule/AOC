@@ -31,7 +31,7 @@ def count_combs(n: int) -> int:
 
             # subtract out non-primitives
             prim_sub = 0
-            for r in range(1, 3):
+            for r in range(1, block_size):
                 if block_size % r == 0 and r < block_size:
                     rep_base = sum(10 ** (r * k) for k in range(block_size // r))
                     

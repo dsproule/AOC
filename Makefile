@@ -20,4 +20,4 @@ aoc2_sv: rtl/src/aoc2_utils.sv
 	iverilog $(VFLAGS) -I ./rtl $^ -o aoc && ./aoc
 
 clean:
-	rm -f aoc *.vcd *.gtkw
+	rm -f aoc *.vcd *.gtkw rtl/converted.v

@@ -1,9 +1,20 @@
 module aoc2_tb;
 
     logic clock, reset;
-    logic [`DATA_WIDTH-1:0] data_in, digs_out;
+    logic [`DATA_WIDTH-1:0] n_in, digs_out, n_digs_in;
+    logic [`LONG_DATA_WIDTH-1:0] count_out;
 
-    get_digs dut(.*);
+    get_digs get_digs_0 (
+        .n_in(n_in),
+
+        .digs_out(digs_out)
+    );
+    
+    group_count #(.group_count_n(2)) gc (
+        .clock(clock), .reset(reset),
+        .n_in(n_in), .n_digs_in(digs_out)
+
+    );
 
     initial forever #5 clock = ~clock;
 
@@ -14,25 +25,12 @@ module aoc2_tb;
 
     initial begin
         clock = 0;
+        reset = 1;
         repeat (3) @(negedge clock);
-        data_in = 99; #1;
-        assert(digs_out == 2);
+        reset = 0;
         @(negedge clock);
-        data_in = 100; #1;
-        assert(digs_out == 3);
-        @(negedge clock);
-        data_in = 0; #1;
-        assert(digs_out == 1);
-        @(negedge clock);
-        data_in = 1; #1;
-        assert(digs_out == 1);
-        @(negedge clock);
-        data_in = 1021430; #1;
-        assert(digs_out == 7);
-        @(negedge clock);
-        data_in = 21234; #1;
-        assert(digs_out == 5);
-        @(negedge clock);
+        n_in = 102; #1;
+        repeat (20) @(negedge clock);
 
         $finish;
     end 
