@@ -98,9 +98,47 @@ def count_combs(n: int) -> int:
     
 
     cum_sum = 0
+    gc_outs = [[], []]
     for group_count_n in range(2, 11):
-        cum_sum += group_count(n, n_digs, group_count_n=group_count_n)
+        gc_outs.append(group_count(n, n_digs, group_count_n=group_count_n))
+        if verbose:
+            print(f"gc_out_{group_count_n}: {gc_outs[-1]}")
+        # cum_sum += gc_out
+    stage1 = []
+    stage1.append(gc_outs[2] + gc_outs[3])
+    stage1.append(gc_outs[4] + gc_outs[5])
+    stage1.append(gc_outs[6] + gc_outs[7])
+    stage1.append(gc_outs[8] + gc_outs[9])
+    stage1.append(gc_outs[10])
+    if verbose:
+        for i in range(len(stage1)):
+            print(f"stage_1[{i}]: {stage1[i]}")
 
+    stage2 = []
+    stage2.append(stage1[0] + stage1[1])
+    stage2.append(stage1[2] + stage1[3])
+    stage2.append(stage1[4])
+    if verbose:
+        for i in range(len(stage2)):
+            print(f"stage_2[{i}]: {stage2[i]}")
+
+    stage3 = []
+    stage3.append(stage2[0] + stage2[1])
+    stage3.append(stage2[2])
+    if verbose:
+        for i in range(len(stage3)):
+            print(f"stage_3[{i}]: {stage3[i]}")
+
+    stage4 = []
+    stage4.append(stage3[0] + stage3[1])
+    if verbose:
+        for i in range(len(stage4)):
+            print(f"stage_4[{i}]: {stage4[i]}")
+
+    cum_sum = stage4[0]
+
+    if verbose:
+        print(f"pref: {pref_lookup[n_digs - 1]}\ncount_out: {cum_sum + pref_lookup[n_digs - 1]}")
     return cum_sum + pref_lookup[n_digs - 1]
 
 # count = group_count(n_in, get_digs(n_in), group_count_n=2)
@@ -111,18 +149,13 @@ pref_lookup[0] = pref_lookup[1] = 0
 for k in range(2, 11):
     pref_lookup[k] = count_combs(10 ** k - 1)
 
-n_in = 28343
-print(f"count_out: {count_combs(n_in)}")
-
-n_in = 2843
-print(f"count_out: {count_combs(n_in)}\n")
-
 verbose = False
 for id_range in f.read().split(','):
     start, end = map(int, id_range.split('-'))
 
     id_sum += count_combs(end) - count_combs(start - 1)
-    # print(f"end: {count_combs(end)} start: {count_combs(start - 1)} diff: {count_combs(end) - count_combs(start - 1)}")
+    if verbose:
+        print(f"end: {count_combs(end)} start: {count_combs(start - 1)} diff: {count_combs(end) - count_combs(start - 1)}")
     
 print(f"Id sum is: {id_sum}")
 # print(f"Correct: {49046150754 == id_sum}")

@@ -10,10 +10,11 @@ module aoc2_tb;
     task load_bounds(input longint unsigned end_bound, input longint unsigned start_bound);
         n_in = end_bound;
         @(posedge count_out_valid);
+        @(negedge clock);
         end_count = count_out;
         @(negedge clock);
         reset = 1;
-        repeat (2) @(negedge clock);
+        repeat (3) @(negedge clock);
         reset = 0;
         @(negedge clock);
 

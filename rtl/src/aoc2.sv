@@ -29,10 +29,10 @@ module count_combs(
         );
     end endgenerate
 
-    logic [`LONG_DATA_WIDTH-1:0] stage1 [0:4];  // 5 sums (9 inputs -> 4 pairs + 1 leftover)
-    logic [`LONG_DATA_WIDTH-1:0] stage2 [0:2];  // 3 sums
-    logic [`LONG_DATA_WIDTH-1:0] stage3 [0:1];  // 2 sums
-    logic [`LONG_DATA_WIDTH-1:0] stage4;        // Final sum
+    logic [`LONG_DATA_WIDTH-1:0] stage1 [4:0];
+    logic [`LONG_DATA_WIDTH + 3:0] stage2 [2:0];
+    logic [`LONG_DATA_WIDTH-1:0] stage3 [1:0];
+    logic [`LONG_DATA_WIDTH-1:0] stage4;
     
     // Stage 1: Pair up inputs (4 cycles)
     always_ff @(posedge clock) begin
@@ -47,7 +47,7 @@ module count_combs(
             stage1[1] <= gc_outs[4] + gc_outs[5];
             stage1[2] <= gc_outs[6] + gc_outs[7];
             stage1[3] <= gc_outs[8] + gc_outs[9];
-            stage1[4] <= gc_outs[10];  // Odd one out
+            stage1[4] <= gc_outs[10];
         end
     end
     
@@ -88,13 +88,13 @@ module count_combs(
     always_ff @(posedge clock) begin
         if (reset) begin
             stage_count <= '0;
-        end else if (&gc_valid && stage_count < 3) begin
+        end else if (&gc_valid && stage_count < 4) begin
             stage_count <= stage_count + 1;
         end
     end
 
     assign count_out = stage4 + pref_out;
-    assign count_out_valid = (stage_count >= 3);
+    assign count_out_valid = (stage_count >= 4);
 
     logic [`LONG_DATA_WIDTH-1:0] pref_out;
     pref_lookup pref (
