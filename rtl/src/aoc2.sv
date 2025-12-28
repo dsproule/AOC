@@ -1,184 +1,106 @@
 `include "common.svh"
 
-module group_count #(
-    parameter group_count_n = 2
-)(
+module count_combs(
     input logic clock, reset,
-    input logic [`DATA_WIDTH-1:0] n_in, n_digs_in,
+    input logic [`DATA_WIDTH-1:0] n_in,
 
+    output logic count_out_valid,
     output logic [`LONG_DATA_WIDTH-1:0] count_out
 );
 
-    logic group_en;
-    assign group_en = (n_digs_in % group_count_n) == '0;
+    logic [3:0] digs_out;
+    get_digs get_digs_0 (
+        .n_in(n_in),
 
-    logic [`DATA_WIDTH-1:0] block_size;
-    assign block_size = n_digs_in / group_count_n;
+        .digs_out(digs_out)
+    );
 
-    logic cur_base_valid;
-    assign cur_base_valid = (k > group_count_n);
+    logic [`LONG_DATA_WIDTH-1:0] gc_outs [10:2];
+    logic [10:2] gc_valid; 
 
-    logic [`DATA_WIDTH-1:0] cur_base;
-    int unsigned k, pow_m;
+    genvar i;
+    generate for (i = 2; i < 11; i++) begin
+        group_count #(.group_count_n(4'(i))) gc (
+            .clock(clock), .reset(reset),
+            .n_in(n_in), .n_digs_in(digs_out),
+
+            .group_count_out_valid(gc_valid[i]),
+            .group_count_out(gc_outs[i])
+        );
+    end endgenerate
+
+    logic [`LONG_DATA_WIDTH-1:0] stage1 [0:4];  // 5 sums (9 inputs -> 4 pairs + 1 leftover)
+    logic [`LONG_DATA_WIDTH-1:0] stage2 [0:2];  // 3 sums
+    logic [`LONG_DATA_WIDTH-1:0] stage3 [0:1];  // 2 sums
+    logic [`LONG_DATA_WIDTH-1:0] stage4;        // Final sum
+    
+    // Stage 1: Pair up inputs (4 cycles)
     always_ff @(posedge clock) begin
         if (reset) begin
-            cur_base <= '0;
-            k     <= '0;
-            pow_m <= '0;
-        end else if (k <= group_count_n) begin
-            k <= k + 1;
-            pow_m <= pow10(k * block_size);
-            cur_base <= pow_m + cur_base;
-        end
-    end
-
-    logic [`DATA_WIDTH-1:0] lb, ub_cand_0, ub_cand_1, ub, lb_reg, ub_reg;
-    always_comb begin
-        lb = (block_size == 1) ? 1 : pow10(block_size - 1);
-        
-        ub_cand_0 = pow10(block_size) - 1;
-        ub_cand_1 = n_in / cur_base;
-
-        ub = (ub_cand_0 < ub_cand_1) ? ub_cand_0 : ub_cand_1;
-    end
-
-    always_ff @(posedge clock) begin
-        if (reset) begin
-            lb_reg <= '0;
-            ub_reg <= '0;
+            stage1[0] <= '0;
+            stage1[1] <= '0;
+            stage1[2] <= '0;
+            stage1[3] <= '0;
+            stage1[4] <= '0;
         end else begin
-            lb_reg <= lb;
-            ub_reg <= ub;
-        end
-    end
-
-    logic [`DATA_WIDTH-1:0] S, N, M, S_reg, N_reg, M_reg;
-    logic [`LONG_DATA_WIDTH-1:0] tmp_sum, tmp_sum_reg;
-
-    always_comb begin
-        S = lb_reg + ub_reg;
-        N = ub_reg - lb_reg + 1;
-        M = (S_reg * N_reg) >> 1;
-        tmp_sum = cur_base * M_reg;
-    end
-
-    int unsigned tmp_sum_cycles;
-    logic tmp_sum_valid;
-
-    always_ff @(posedge clock) begin
-        if (reset) begin
-            S_reg   <= '0;
-            N_reg   <= '0;
-            M_reg   <= '0;
-            tmp_sum <= '0;
-            tmp_sum_cycles <= '0;
-        end else if (cur_base_valid) begin
-            S_reg   <= S;
-            N_reg   <= N;
-            M_reg   <= M;
-            tmp_sum_reg <= tmp_sum;
-            
-            if (tmp_sum_cycles < 4)
-                tmp_sum_cycles <= tmp_sum_cycles + 1;
+            stage1[0] <= gc_outs[2] + gc_outs[3];
+            stage1[1] <= gc_outs[4] + gc_outs[5];
+            stage1[2] <= gc_outs[6] + gc_outs[7];
+            stage1[3] <= gc_outs[8] + gc_outs[9];
+            stage1[4] <= gc_outs[10];  // Odd one out
         end
     end
     
-    assign tmp_sum_valid = (tmp_sum_cycles == 4);
-
-    logic [`LONG_DATA_WIDTH-1:0] prim_sub_out_1, prim_sub_out_2;
-    prim_calc #(.r(1)) prim_calc_1 (
-        .clock(clock), .reset(reset), .cur_base_valid(cur_base_valid),
-        .cur_base_in(cur_base), .block_size_in(block_size),
-        .ub_in(ub),
-
-        .prim_sub_out(prim_sub_out_1)
-    );
+    // Stage 2: Add pairs (3 cycles)
+    always_ff @(posedge clock) begin
+        if (reset) begin
+            stage2[0] <= '0;
+            stage2[1] <= '0;
+            stage2[2] <= '0;
+        end else begin
+            stage2[0] <= stage1[0] + stage1[1];
+            stage2[1] <= stage1[2] + stage1[3];
+            stage2[2] <= stage1[4];
+        end
+    end
     
-    prim_calc #(.r(2)) prim_calc_2 (
-        .cur_base_in(cur_base), .block_size_in(block_size),
-        .ub_in(ub),
+    // Stage 3: Add pairs (2 cycles)
+    always_ff @(posedge clock) begin
+        if (reset) begin
+            stage3[0] <= '0;
+            stage3[1] <= '0;
+        end else begin
+            stage3[0] <= stage2[0] + stage2[1];
+            stage3[1] <= stage2[2];
+        end
+    end
+    
+    // Stage 4: Final sum
+    always_ff @(posedge clock) begin
+        if (reset) begin
+            stage4 <= '0;
+        end else begin
+            stage4 <= stage3[0] + stage3[1];
+        end
+    end
+    
+    int stage_count;
+    always_ff @(posedge clock) begin
+        if (reset) begin
+            stage_count <= '0;
+        end else if (&gc_valid && stage_count < 3) begin
+            stage_count <= stage_count + 1;
+        end
+    end
 
-        .prim_sub_out(prim_sub_out_2)
+    assign count_out = stage4 + pref_out;
+    assign count_out_valid = (stage_count >= 3);
+
+    logic [`LONG_DATA_WIDTH-1:0] pref_out;
+    pref_lookup pref (
+        .idx(digs_out - 4'(1)),
+
+        .value(pref_out)
     );
-
-    assign count_out = (group_en) ? tmp_sum_reg - prim_sub_out_1 - prim_sub_out_2 : '0;
-
-endmodule
-
-module prim_calc #(
-    parameter r = 1
-)(
-    input logic clock, reset, cur_base_valid,
-    input logic [`DATA_WIDTH-1:0] cur_base_in, block_size_in, ub_in,
-
-    output logic prim_sub_out_valid,
-    output logic [`LONG_DATA_WIDTH-1:0] prim_sub_out
-);
-
-    logic prim_en;
-    assign prim_en = (block_size_in % r == '0) && r < block_size_in;
-
-    logic rep_base_valid;
-    assign rep_base_valid = (k > (block_size_in / r) && cur_base_valid);
-    logic [`DATA_WIDTH-1:0] rep_base;
-    int unsigned k, pow_m;
-    always_ff @(posedge clock) begin
-        if (reset) begin
-            rep_base <= '0;
-            k     <= '0;
-            pow_m <= '0;
-        end else if (k <= (block_size_in / r) && cur_base_valid) begin
-            k <= k + 1;
-            pow_m <= pow10(k * r);
-            rep_base <= pow_m + rep_base;
-        end
-    end
-
-    logic [`DATA_WIDTH-1:0] lb_r, ub_r, lb_r_reg, ub_r_reg;
-    logic [`DATA_WIDTH-1:0] S, N, BM, M, S_reg, N_reg, BM_reg, M_reg;
-    logic [`LONG_DATA_WIDTH-1:0] PS, PS_reg;
-
-    always_comb begin
-        lb_r = (r == 1) ? 1 : pow10(r - 1);
-        ub_r = ub_in / rep_base;
-
-        S = lb_r_reg + ub_r_reg;
-        N = ub_r_reg - lb_r_reg + 1;
-        M = (S_reg * N_reg) >> 1;
-        BM = cur_base_in * rep_base;
-
-        PS = (ub_r_reg >= lb_r_reg) ? BM * M : '0;
-    end
-
-    int unsigned prim_sub_cycles;
-    always_ff @(posedge clock) begin
-        if (reset) begin
-            ub_r_reg <= '0;
-            lb_r_reg <= '0;
-
-            S_reg  <= '0;
-            N_reg  <= '0;
-            M_reg  <= '0;
-            BM_reg <= '0;
-
-            PS_reg    <= PS;
-            prim_sub_cycles <= '0;
-        end else if (rep_base_valid) begin
-            ub_r_reg <= ub_r;
-            lb_r_reg <= lb_r;
-
-            S_reg <= S;
-            N_reg <= N;
-            M_reg <= M;
-            BM_reg <= BM;
-
-            PS_reg <= PS;
-            if (prim_sub_cycles < 3)
-                prim_sub_cycles <= prim_sub_cycles + 1;
-        end
-    end
-
-    assign prim_sub_out_valid = (prim_sub_cycles == 3);
-    assign prim_sub_out = (prim_en) ? PS_reg : '0;
 
 endmodule

@@ -1,6 +1,6 @@
 f = open("input2.txt", "r")
 
-verbose = True
+verbose = False
 
 def get_digs(n: int) -> list[int]:
     if n == 0:
@@ -98,19 +98,28 @@ def count_combs(n: int) -> int:
     
 
     cum_sum = 0
-    for group_count_n in range(2, n_digs + 1):
+    # for group_count_n in range(2, n_digs + 1):
+    for group_count_n in range(2, 11):
         cum_sum += group_count(n, n_digs, group_count_n=group_count_n)
-        
+        # if verbose:
+        print(f"gc_{group_count_n}: {group_count(n, n_digs, group_count_n=group_count_n)}")
+    print(f"pref: {pref_lookup[n_digs - 1]}")
     return cum_sum + pref_lookup[n_digs - 1]
 
+# verbose = True
 n_in = 2843
-count = group_count(n_in, get_digs(n_in), group_count_n=2)
-if verbose:
-    print(f"count_out: {count}")
+# count = group_count(n_in, get_digs(n_in), group_count_n=2)
+# if verbose:
+#     print(f"count_out: {count}")
 # id_sum = 0
-# pref_lookup[0] = pref_lookup[1] = 0
-# for k in range(2, 11):
-#     pref_lookup[k] = count_combs(10 ** k - 1)
+pref_lookup[0] = pref_lookup[1] = 0
+for k in range(2, 11):
+    pref_lookup[k] = count_combs(10 ** k - 1)
+
+print()
+print()
+print()
+print(f"count_out: {count_combs(n_in)}\n")
 
 # for id_range in f.read().split(','):
 #     start, end = map(int, id_range.split('-'))
@@ -119,4 +128,4 @@ if verbose:
     
 # print(f"Id sum is: {id_sum}")
 # print(f"Correct: {49046150754 == id_sum}")
-# f.close()
+f.close()
