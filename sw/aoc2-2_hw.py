@@ -1,5 +1,7 @@
 f = open("input2.txt", "r")
 
+verbose = True
+
 def get_digs(n: int) -> list[int]:
     if n == 0:
         return 1
@@ -21,22 +23,30 @@ def prim_calc(cur_base: int, block_size: int, ub: int, r: int = -1) -> int:
         raise NotImplementedError()
     
     prim_sub = 0
+    if verbose:
+        print(f"\nr: {r}", "=" * 30)
+        print(f"\ten: {int(block_size % r == 0 and r < block_size)}")
     if block_size % r == 0 and r < block_size:
 
         rep_base = 0
-        
         for k in range(block_size // r):
-            rep_base += pow10(k * r)
+            rep_base = rep_base + pow10(k * r)
         
         lb_r = pow10(r - 1) if r != 1 else 1
         ub_r = ub // rep_base
+        if verbose:
+            print(f"\tlb_r: {lb_r}\n\tub_r: {ub_r}\n\trep_base: {rep_base}")
 
         S = lb_r + ub_r
         N = ub_r - lb_r + 1
         BM = cur_base * rep_base
+        M = ((S * N) >> 1)
         
         if ub_r >= lb_r:
-            prim_sub = BM * ((S * N) >> 1)
+            prim_sub = BM * M
+
+        if verbose:
+            print(f"\tS: {S}\n\tN: {N}\n\tBM: {BM}\n\tM: {M}\n\tprim_sub: {prim_sub}")
     return prim_sub
 
 def group_count(n: int, n_digs: int, group_count_n: int = -1) -> int:
@@ -45,7 +55,6 @@ def group_count(n: int, n_digs: int, group_count_n: int = -1) -> int:
     
     en = n_digs % group_count_n == 0
     
-    verbose = True
     if verbose:
         print(f"\ngroup_count_n: {group_count_n}", "=" * 30)
         print(f"\ten: {int(en)}")
@@ -82,8 +91,6 @@ def group_count(n: int, n_digs: int, group_count_n: int = -1) -> int:
     for r in range(1, 3):
         prim_sub += prim_calc(cur_base, block_size, ub, r=r)
 
-    # prim_sub = prim_calc(cur_base, block_size, ub, r=1) + prim_calc(cur_base, block_size, ub, r=2)
-
     return tmp_sum - prim_sub
 
 def count_combs(n: int) -> int:
@@ -97,7 +104,9 @@ def count_combs(n: int) -> int:
     return cum_sum + pref_lookup[n_digs - 1]
 
 n_in = 2843
-group_count(n_in, get_digs(n_in), group_count_n=2)
+count = group_count(n_in, get_digs(n_in), group_count_n=2)
+if verbose:
+    print(f"count_out: {count}")
 # id_sum = 0
 # pref_lookup[0] = pref_lookup[1] = 0
 # for k in range(2, 11):

@@ -15,10 +15,11 @@ module group_count #(
     logic [`DATA_WIDTH-1:0] block_size;
     assign block_size = n_digs_in / group_count_n;
 
+    logic cur_base_valid;
+    assign cur_base_valid = (k > group_count_n);
+
     logic [`DATA_WIDTH-1:0] cur_base;
     int unsigned k, pow_m;
-
-    // logic stall;
     always_ff @(posedge clock) begin
         if (reset) begin
             cur_base <= '0;
@@ -61,9 +62,8 @@ module group_count #(
         tmp_sum = cur_base * M_reg;
     end
 
-    int tmp_sum_cycles;
-    logic tmp_sum_ready;
-    assign tmp_sum_ready = (tmp_sum_cycles == 7);
+    int unsigned tmp_sum_cycles;
+    logic tmp_sum_valid;
 
     always_ff @(posedge clock) begin
         if (reset) begin
@@ -72,69 +72,75 @@ module group_count #(
             M_reg   <= '0;
             tmp_sum <= '0;
             tmp_sum_cycles <= '0;
-        end else begin
+        end else if (cur_base_valid) begin
             S_reg   <= S;
             N_reg   <= N;
             M_reg   <= M;
             tmp_sum_reg <= tmp_sum;
             
-            if (tmp_sum_cycles < 7)
+            if (tmp_sum_cycles < 4)
                 tmp_sum_cycles <= tmp_sum_cycles + 1;
         end
     end
-
-    // logic [`LONG_DATA_WIDTH-1:0] prim_sub_out_1, prim_sub_out_2;
-    // prim_calc #(.r(1)) prim_calc_1 (
-    //     .cur_base_in(cur_base), .block_size_in(block_size),
-    //     .ub_in(ub),
-
-    //     .prim_sub_out(prim_sub_out_1)
-    // );
     
-    // prim_calc #(.r(2)) prim_calc_2 (
-    //     .cur_base_in(cur_base), .block_size_in(block_size),
-    //     .ub_in(ub),
+    assign tmp_sum_valid = (tmp_sum_cycles == 4);
 
-    //     .prim_sub_out(prim_sub_out_2)
-    // );
+    logic [`LONG_DATA_WIDTH-1:0] prim_sub_out_1, prim_sub_out_2;
+    prim_calc #(.r(1)) prim_calc_1 (
+        .clock(clock), .reset(reset), .cur_base_valid(cur_base_valid),
+        .cur_base_in(cur_base), .block_size_in(block_size),
+        .ub_in(ub),
 
-    // assign count_out = (group_en) ? tmp_sum_reg - prim_sub_out_1 - prim_sub_out_2 : '0;
+        .prim_sub_out(prim_sub_out_1)
+    );
+    
+    prim_calc #(.r(2)) prim_calc_2 (
+        .cur_base_in(cur_base), .block_size_in(block_size),
+        .ub_in(ub),
+
+        .prim_sub_out(prim_sub_out_2)
+    );
+
+    assign count_out = (group_en) ? tmp_sum_reg - prim_sub_out_1 - prim_sub_out_2 : '0;
 
 endmodule
 
 module prim_calc #(
     parameter r = 1
 )(
-    input logic clock, reset,
+    input logic clock, reset, cur_base_valid,
     input logic [`DATA_WIDTH-1:0] cur_base_in, block_size_in, ub_in,
 
+    output logic prim_sub_out_valid,
     output logic [`LONG_DATA_WIDTH-1:0] prim_sub_out
 );
 
     logic prim_en;
     assign prim_en = (block_size_in % r == '0) && r < block_size_in;
 
+    logic rep_base_valid;
+    assign rep_base_valid = (k > (block_size_in / r) && cur_base_valid);
     logic [`DATA_WIDTH-1:0] rep_base;
     int unsigned k, pow_m;
     always_ff @(posedge clock) begin
         if (reset) begin
             rep_base <= '0;
-            k        <=  1;
-            pow_m    <= '0;
-        end else if (k < (block_size_in / r)) begin
-            k     <= k + 1;
-            pow_m <= k * r;
-            rep_base <= rep_base + pow10(pow_m);
+            k     <= '0;
+            pow_m <= '0;
+        end else if (k <= (block_size_in / r) && cur_base_valid) begin
+            k <= k + 1;
+            pow_m <= pow10(k * r);
+            rep_base <= pow_m + rep_base;
         end
     end
 
     logic [`DATA_WIDTH-1:0] lb_r, ub_r, lb_r_reg, ub_r_reg;
     logic [`DATA_WIDTH-1:0] S, N, BM, M, S_reg, N_reg, BM_reg, M_reg;
-    logic [`LONG_DATA_WIDTH-1:0] PS;
+    logic [`LONG_DATA_WIDTH-1:0] PS, PS_reg;
 
     always_comb begin
         lb_r = (r == 1) ? 1 : pow10(r - 1);
-        ub_r = ub_in / rep_base[`DATA_WIDTH-1:0];
+        ub_r = ub_in / rep_base;
 
         S = lb_r_reg + ub_r_reg;
         N = ub_r_reg - lb_r_reg + 1;
@@ -144,6 +150,7 @@ module prim_calc #(
         PS = (ub_r_reg >= lb_r_reg) ? BM * M : '0;
     end
 
+    int unsigned prim_sub_cycles;
     always_ff @(posedge clock) begin
         if (reset) begin
             ub_r_reg <= '0;
@@ -154,8 +161,9 @@ module prim_calc #(
             M_reg  <= '0;
             BM_reg <= '0;
 
-            prim_sub_out <= PS;
-        end else begin
+            PS_reg    <= PS;
+            prim_sub_cycles <= '0;
+        end else if (rep_base_valid) begin
             ub_r_reg <= ub_r;
             lb_r_reg <= lb_r;
 
@@ -164,8 +172,13 @@ module prim_calc #(
             M_reg <= M;
             BM_reg <= BM;
 
-            prim_sub_out <= PS;
+            PS_reg <= PS;
+            if (prim_sub_cycles < 3)
+                prim_sub_cycles <= prim_sub_cycles + 1;
         end
     end
+
+    assign prim_sub_out_valid = (prim_sub_cycles == 3);
+    assign prim_sub_out = (prim_en) ? PS_reg : '0;
 
 endmodule
