@@ -45,6 +45,10 @@ def group_count(n: int, n_digs: int, group_count_n: int = -1) -> int:
     
     en = n_digs % group_count_n == 0
     
+    verbose = True
+    if verbose:
+        print(f"\ngroup_count_n: {group_count_n}", "=" * 30)
+        print(f"\ten: {int(en)}")
     if not en:
         return 0
     
@@ -55,20 +59,27 @@ def group_count(n: int, n_digs: int, group_count_n: int = -1) -> int:
     for k in range(group_count_n):
         cur_base += pow10(k * block_size)
 
+    if verbose:
+        print(f"\tblock_size: {block_size}\n\tcur_base: {cur_base}\t")
+
     lb = pow10(block_size - 1) if block_size != 1 else 1
 
     ub_cand0, ub_cand1 = pow10(block_size) - 1, n // cur_base
     ub = min(ub_cand0, ub_cand1)
 
+    if verbose:
+        print(f"\tlb: {lb}\n\tub: {ub}\t")
     # series of all possible nums
     S = lb + ub
     N = ub - lb + 1
     M = (S * N) >> 1
     tmp_sum = cur_base * M
 
+    if verbose:
+        print(f"\tS: {S}\n\tN: {N}\n\tM: {M}\n\ttmp_sum: {tmp_sum}")
     # subtract out non-primitives
     prim_sub = 0
-    for r in range(3):
+    for r in range(1, 3):
         prim_sub += prim_calc(cur_base, block_size, ub, r=r)
 
     # prim_sub = prim_calc(cur_base, block_size, ub, r=1) + prim_calc(cur_base, block_size, ub, r=2)
@@ -85,16 +96,18 @@ def count_combs(n: int) -> int:
         
     return cum_sum + pref_lookup[n_digs - 1]
 
-id_sum = 0
-pref_lookup[0] = pref_lookup[1] = 0
-for k in range(2, 11):
-    pref_lookup[k] = count_combs(10 ** k - 1)
+n_in = 2843
+group_count(n_in, get_digs(n_in), group_count_n=2)
+# id_sum = 0
+# pref_lookup[0] = pref_lookup[1] = 0
+# for k in range(2, 11):
+#     pref_lookup[k] = count_combs(10 ** k - 1)
 
-for id_range in f.read().split(','):
-    start, end = map(int, id_range.split('-'))
+# for id_range in f.read().split(','):
+#     start, end = map(int, id_range.split('-'))
 
-    id_sum += count_combs(end) - count_combs(start - 1)
+#     id_sum += count_combs(end) - count_combs(start - 1)
     
-print(f"Id sum is: {id_sum}")
-print(f"Correct: {49046150754 == id_sum}")
-f.close()
+# print(f"Id sum is: {id_sum}")
+# print(f"Correct: {49046150754 == id_sum}")
+# f.close()

@@ -13,7 +13,6 @@ module aoc2_tb;
     group_count #(.group_count_n(2)) gc (
         .clock(clock), .reset(reset),
         .n_in(n_in), .n_digs_in(digs_out)
-
     );
 
     initial forever #5 clock = ~clock;
@@ -29,7 +28,7 @@ module aoc2_tb;
         repeat (3) @(negedge clock);
         reset = 0;
         @(negedge clock);
-        n_in = 102; #1;
+        n_in = 2843; #1;
         repeat (20) @(negedge clock);
 
         $finish;

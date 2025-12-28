@@ -17,7 +17,7 @@ function automatic logic [`DATA_WIDTH-1:0] pow10(input logic [3:0] n);
         8: pow10 = 64'd100_000_000;
         9: pow10 = 64'd1_000_000_000;
         10: pow10 = 64'd10_000_000_000;
-        default: pow10 = 64'd0;
+        default: pow10 = 64'hDEADBEEF;
     endcase
 endfunction
 
