@@ -1,7 +1,7 @@
 `ifndef COMMON_SVH__
 `define COMMON_SVH__
 
-`define DATA_WIDTH 32
+`define DATA_WIDTH 64
 `define LONG_DATA_WIDTH 64
 
 function automatic logic [`DATA_WIDTH-1:0] pow10(input logic [3:0] n);

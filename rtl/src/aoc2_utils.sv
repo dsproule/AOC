@@ -139,8 +139,8 @@ module group_count #(
         .prim_sub_out_valid(prim_sub_out_1_valid),
         .prim_sub_out(prim_sub_out_1)
     );
-    
     prim_calc #(.r(2)) prim_calc_2 (
+        .clock(clock), .reset(reset), .cur_base_valid(cur_base_valid),
         .cur_base_in(cur_base), .block_size_in(block_size),
         .ub_in(ub),
 

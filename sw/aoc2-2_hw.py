@@ -103,11 +103,10 @@ def count_combs(n: int) -> int:
 
     return cum_sum + pref_lookup[n_digs - 1]
 
-# verbose = True
 # count = group_count(n_in, get_digs(n_in), group_count_n=2)
 # if verbose:
 #     print(f"count_out: {count}")
-# id_sum = 0
+id_sum = 0
 pref_lookup[0] = pref_lookup[1] = 0
 for k in range(2, 11):
     pref_lookup[k] = count_combs(10 ** k - 1)
@@ -118,11 +117,13 @@ print(f"count_out: {count_combs(n_in)}")
 n_in = 2843
 print(f"count_out: {count_combs(n_in)}\n")
 
-# for id_range in f.read().split(','):
-#     start, end = map(int, id_range.split('-'))
+verbose = False
+for id_range in f.read().split(','):
+    start, end = map(int, id_range.split('-'))
 
-#     id_sum += count_combs(end) - count_combs(start - 1)
+    id_sum += count_combs(end) - count_combs(start - 1)
+    # print(f"end: {count_combs(end)} start: {count_combs(start - 1)} diff: {count_combs(end) - count_combs(start - 1)}")
     
-# print(f"Id sum is: {id_sum}")
+print(f"Id sum is: {id_sum}")
 # print(f"Correct: {49046150754 == id_sum}")
 f.close()

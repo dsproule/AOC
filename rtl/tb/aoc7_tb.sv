@@ -69,6 +69,7 @@ module aoc7_tb;
 
         $display("Answer is: %0d", cum_sum);
         $display("Correct: %0b", cum_sum == 5921061943075);
+        $fclose(fd);
         $finish;
     end 
 endmodule

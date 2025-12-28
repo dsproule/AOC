@@ -27,6 +27,7 @@ module aoc2_tb;
         @(negedge clock);
 
         tmp_sum = end_count - start_count;
+        // $display("end: %0d start: %0d diff: %0d", end_count, start_count, tmp_sum);
     endtask
     
     initial forever #5 clock = ~clock;
@@ -36,19 +37,54 @@ module aoc2_tb;
         $dumpvars(0, aoc2_tb);
     end
 
+    int fd;
+    int c;
+    int done;
+
     longint unsigned end_count, start_count, total_sum;
+    logic num_i;
+    longint unsigned nums [1:0];
     initial begin
+        fd = $fopen("input2.txt", "r");
+        if (fd == 0) $fatal(1, "ERROR: Could not open input7.txt");
+
         clock = 0;
         reset = 1;
         total_sum = '0;
+        done = 0;
+        
+        num_i = 0;
+        nums[0] = '0;
+        nums[1] = '0;
+        
         repeat (3) @(negedge clock);
         reset = 0;
         @(negedge clock);
+        while (!done) begin
+            c = $fgetc(fd);
+
+            if (c == "," || c == 10 || c == -1) begin
+                reset = 0;
+                done = (c == -1);
+                load_bounds(nums[1], nums[0]);
+                cum_sum = cum_sum + tmp_sum;
+                #1;
+                num_i = 0;
+                nums[0] = '0;
+                nums[1] = '0;
+            end
+            else if (c == "-") num_i = ~num_i;
+            else begin 
+                reset = 1;
+                nums[num_i] = nums[num_i] * 10 + c - "0";
+            end
+        end
+        @(negedge clock);
         
-        load_bounds(28343, 2843);
-        cum_sum = cum_sum + tmp_sum;
-        $display("%0d", cum_sum);
-        repeat (3) @(negedge clock);
+        // load_bounds(28343, 2843);
+        $display("Id sum is: %0d", cum_sum);
+        // repeat (3) @(negedge clock);
+        $fclose(fd);
         $finish;
     end 
 endmodule
