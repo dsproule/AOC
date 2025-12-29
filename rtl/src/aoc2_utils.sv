@@ -5,20 +5,25 @@ module get_digs(
 
     output logic [3:0] digs_out
 );
-
-    genvar i;
+    // priority encoder 
     always_comb begin
-        digs_out = 1;
-        for (int i = 10; i > 0; i--) begin
-            if (n_in < pow10(i))
-                digs_out = i;
-        end
+        if      (n_in >= pow10(10)) digs_out = 11;
+        else if (n_in >= pow10(9))  digs_out = 10;
+        else if (n_in >= pow10(8))  digs_out = 9;
+        else if (n_in >= pow10(7))  digs_out = 8;
+        else if (n_in >= pow10(6))  digs_out = 7;
+        else if (n_in >= pow10(5))  digs_out = 6;
+        else if (n_in >= pow10(4))  digs_out = 5;
+        else if (n_in >= pow10(3))  digs_out = 4;
+        else if (n_in >= pow10(2))  digs_out = 3;
+        else if (n_in >= pow10(1))  digs_out = 2;
+        else                        digs_out = 1;
     end
 
 endmodule
 
 module pref_lookup(
-    input logic [3:0] idx,  // 0-10 needs 4 bits
+    input logic [3:0] idx,
 
     output logic [`LONG_DATA_WIDTH-1:0] value
 );

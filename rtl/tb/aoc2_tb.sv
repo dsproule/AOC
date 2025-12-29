@@ -28,7 +28,6 @@ module aoc2_tb;
         @(negedge clock);
 
         tmp_sum = end_count - start_count;
-        // $display("end: %0d start: %0d diff: %0d", end_count, start_count, tmp_sum);
     endtask
     
     initial forever #5 clock = ~clock;

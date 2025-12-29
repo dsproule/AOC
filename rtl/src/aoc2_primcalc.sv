@@ -21,6 +21,9 @@ module prim_calc(
 
     assign k_bound = (r == 1) ? block_size_in : block_size_in >> 1;
 
+    logic [`LONG_DATA_WIDTH-1:0] base10;
+    assign base10 =  pow10(((k <= k_bound && cur_base_valid)) ? k * r : r - 1);
+
     always_ff @(posedge clock) begin
         if (reset || !input_valid) begin
             rep_base <= '0;
@@ -28,7 +31,7 @@ module prim_calc(
             pow_m <= '0;
         end else if (k <= k_bound && cur_base_valid) begin
             k <= k + 1;
-            pow_m <= pow10(k * r);
+            pow_m <= base10;
             rep_base <= pow_m + rep_base;
         end
     end
@@ -38,7 +41,7 @@ module prim_calc(
     logic [`LONG_DATA_WIDTH-1:0] PS_next, PS;
 
     always_comb begin
-        lb_r_next = (r == 1) ? 1 : pow10(r - 1);
+        lb_r_next = (r == 1) ? 1 : base10;
         ub_r_next = ub_in / rep_base;
 
         S_next = lb_r + ub_r;

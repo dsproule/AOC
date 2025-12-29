@@ -13,13 +13,11 @@ module group_count #(
 
     localparam group_count_latency = 4;
 
-    logic group_en;
-    assign group_en = (n_digs_in % group_count_n) == '0;
-
+    logic group_en, cur_base_valid;
     logic [`DATA_WIDTH-1:0] block_size;
-    assign block_size = n_digs_in / group_count_n;
 
-    logic cur_base_valid;
+    assign group_en = (n_digs_in % group_count_n) == '0;
+    assign block_size = n_digs_in / group_count_n;
     assign cur_base_valid = (k > group_count_n);
 
     logic [`DATA_WIDTH-1:0] cur_base;
@@ -93,7 +91,6 @@ module group_count #(
     logic prim_sub_out_valid, prim_sub_out_1_valid, prim_sub_out_2_valid;
     
     logic [1:0] r, r_next; 
-    logic [2:1] prim_sub_en, prim_sub_en_next; 
 
     logic input_valid, input_valid_next;
     prim_calc prim_calc_1 (
@@ -105,6 +102,11 @@ module group_count #(
         .prim_sub_out(prim_sub_out)
     );
 
+    typedef enum logic [2:1] {
+        PRIM_START, PRIM_1_CALC, PRIM_2_CALC, PRIM_END
+    } prim_calc_share_t;
+
+    prim_calc_share_t prim_sub_en, prim_sub_en_next; 
     // FSM used to share resource of prim_calc
     always_comb begin
         prim_sub_en_next = prim_sub_en;
@@ -113,22 +115,24 @@ module group_count #(
         
         if (cur_base_valid) begin
             case (prim_sub_en)
-                2'b00: begin
-                    prim_sub_en_next = 2'b01;
-                    input_valid_next = 1'b1;
+                PRIM_START: begin
+                    prim_sub_en_next = PRIM_1_CALC;
+                    input_valid_next = 1;
                     r_next = 2'd1;
                 end
-                2'b01: begin
+                PRIM_1_CALC: begin
                     if (prim_sub_out_valid) begin
-                        prim_sub_en_next = 2'b10;
-                        input_valid_next = 1'b0;
+                        prim_sub_en_next = PRIM_2_CALC;
+                        input_valid_next = '0;
                     end
                 end
-                2'b10: begin
+                PRIM_2_CALC: begin
                     // holds down for cycle
                     if (!input_valid) begin
-                        input_valid_next = 1'b1;
+                        input_valid_next = 1;
                         r_next = 2'd2;
+                    end else if (prim_sub_out_valid) begin
+                        prim_sub_en_next = PRIM_END;
                     end
                 end
                 default: ;
@@ -139,10 +143,10 @@ module group_count #(
 
     always_ff @(posedge clock) begin
         if (reset) begin
-            input_valid    <= 1'b0;
-            prim_sub_en    <= 2'b00;
+            input_valid    <= '0;
+            prim_sub_en    <= PRIM_START;
             {prim_sub_out_1, prim_sub_out_2} <= '0;
-            {prim_sub_out_1_valid, prim_sub_out_2_valid} <= 1'b0;
+            {prim_sub_out_1_valid, prim_sub_out_2_valid} <= '0;
             r <= 2'd0;
         end else begin
             input_valid <= input_valid_next;
@@ -150,11 +154,11 @@ module group_count #(
             r <= r_next;
 
             if (prim_sub_out_valid && input_valid) begin
-                if (prim_sub_en == 2'b01) begin
-                    prim_sub_out_1_valid <= 1'b1;
+                if (prim_sub_en == PRIM_1_CALC) begin
+                    prim_sub_out_1_valid <= 1;
                     prim_sub_out_1       <= prim_sub_out;
-                end else if (prim_sub_en == 2'b10) begin
-                    prim_sub_out_2_valid <= 1'b1;
+                end else if (prim_sub_en == PRIM_2_CALC) begin
+                    prim_sub_out_2_valid <= 1;
                     prim_sub_out_2       <= prim_sub_out;
                 end
             end
