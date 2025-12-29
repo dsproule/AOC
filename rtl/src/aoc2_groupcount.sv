@@ -1,0 +1,164 @@
+`include "common.svh"
+
+module group_count #(
+    parameter group_count_n = 2
+)(
+    input logic clock, reset,
+    input logic [`DATA_WIDTH-1:0] n_in, 
+    input logic [3:0] n_digs_in,
+
+    output logic group_count_out_valid,
+    output logic [`LONG_DATA_WIDTH-1:0] group_count_out
+);
+
+    logic group_en;
+    assign group_en = (n_digs_in % group_count_n) == '0;
+
+    logic [`DATA_WIDTH-1:0] block_size;
+    assign block_size = n_digs_in / group_count_n;
+
+    logic cur_base_valid;
+    assign cur_base_valid = (k > group_count_n);
+
+    logic [`DATA_WIDTH-1:0] cur_base;
+    int unsigned k, pow_m;
+    always_ff @(posedge clock) begin
+        if (reset) begin
+            cur_base <= '0;
+            k     <= '0;
+            pow_m <= '0;
+        end else if (k <= group_count_n) begin
+            k <= k + 1;
+            pow_m <= pow10(k * block_size);
+            cur_base <= pow_m + cur_base;
+        end
+    end
+
+    logic [`DATA_WIDTH-1:0] lb, ub_cand_0, ub_cand_1, ub, lb_reg, ub_reg;
+    always_comb begin
+        lb = (block_size == 1) ? 1 : pow10(block_size - 1);
+        
+        ub_cand_0 = pow10(block_size) - 1;
+        ub_cand_1 = n_in / cur_base;
+
+        ub = (ub_cand_0 < ub_cand_1) ? ub_cand_0 : ub_cand_1;
+    end
+
+    always_ff @(posedge clock) begin
+        if (reset) begin
+            lb_reg <= '0;
+            ub_reg <= '0;
+        end else begin
+            lb_reg <= lb;
+            ub_reg <= ub;
+        end
+    end
+
+    logic [`DATA_WIDTH-1:0] S, N, M, S_reg, N_reg, M_reg;
+    logic [`LONG_DATA_WIDTH-1:0] tmp_sum, tmp_sum_reg;
+
+    always_comb begin
+        S = lb_reg + ub_reg;
+        N = ub_reg - lb_reg + 1;
+        M = (S_reg * N_reg) >> 1;
+        tmp_sum = cur_base * M_reg;
+    end
+
+    int unsigned tmp_sum_cycles;
+    logic tmp_sum_valid;
+
+    always_ff @(posedge clock) begin
+        if (reset) begin
+            S_reg   <= '0;
+            N_reg   <= '0;
+            M_reg   <= '0;
+            tmp_sum <= '0;
+            tmp_sum_cycles <= '0;
+        end else if (cur_base_valid) begin
+            S_reg   <= S;
+            N_reg   <= N;
+            M_reg   <= M;
+            tmp_sum_reg <= tmp_sum;
+            
+            if (tmp_sum_cycles < 4)
+                tmp_sum_cycles <= tmp_sum_cycles + 1;
+        end
+    end
+    
+    assign tmp_sum_valid = (tmp_sum_cycles == 4);
+
+    logic [`LONG_DATA_WIDTH-1:0] prim_sub_out, prim_sub_out_1, prim_sub_out_2;
+    logic prim_sub_out_valid, prim_sub_out_1_valid, prim_sub_out_2_valid;
+    
+    logic [1:0] r, r_next; 
+    logic [2:1] prim_sub_en, prim_sub_en_next; 
+
+    logic input_valid, input_valid_next;
+    prim_calc prim_calc_1 (
+        .clock(clock), .reset(reset), .cur_base_valid(cur_base_valid), .input_valid(input_valid),
+        .cur_base_in(cur_base), .block_size_in(block_size),
+        .ub_in(ub), .r(r),
+
+        .prim_sub_out_valid(prim_sub_out_valid),
+        .prim_sub_out(prim_sub_out)
+    );
+
+    always_comb begin
+        prim_sub_en_next = prim_sub_en;
+        input_valid_next = input_valid;
+        r_next = r;
+        
+        if (cur_base_valid) begin
+            case (prim_sub_en)
+                2'b00: begin
+                    prim_sub_en_next = 2'b01;
+                    input_valid_next = 1'b1;
+                    r_next = 2'd1;
+                end
+                2'b01: begin
+                    if (prim_sub_out_valid) begin
+                        prim_sub_en_next = 2'b10;
+                        input_valid_next = 1'b0;
+                    end
+                end
+                2'b10: begin
+                    // holds down for cycle
+                    if (!input_valid) begin
+                        input_valid_next = 1'b1;
+                        r_next = 2'd2;
+                    end
+                end
+                default: ;
+
+            endcase;
+        end
+    end
+
+    always_ff @(posedge clock) begin
+        if (reset) begin
+            input_valid    <= 1'b0;
+            prim_sub_en    <= 2'b00;
+            {prim_sub_out_1, prim_sub_out_2} <= '0;
+            {prim_sub_out_1_valid, prim_sub_out_2_valid} <= 1'b0;
+            r <= 2'd0;
+        end else begin
+            input_valid <= input_valid_next;
+            prim_sub_en <= prim_sub_en_next;
+            r <= r_next;
+
+            if (prim_sub_out_valid && input_valid) begin
+                if (prim_sub_en == 2'b01) begin
+                    prim_sub_out_1_valid <= 1'b1;
+                    prim_sub_out_1       <= prim_sub_out;
+                end else if (prim_sub_en == 2'b10) begin
+                    prim_sub_out_2_valid <= 1'b1;
+                    prim_sub_out_2       <= prim_sub_out;
+                end
+            end
+        end
+    end
+
+    assign group_count_out = (group_en) ? tmp_sum_reg - prim_sub_out_1 - prim_sub_out_2 : '0;
+    assign group_count_out_valid = tmp_sum_valid & prim_sub_out_1_valid & prim_sub_out_2_valid;
+
+endmodule

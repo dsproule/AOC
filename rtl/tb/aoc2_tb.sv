@@ -82,9 +82,8 @@ module aoc2_tb;
         end
         @(negedge clock);
         
-        // load_bounds(28343, 2843);
         $display("Id sum is: %0d", cum_sum);
-        // repeat (3) @(negedge clock);
+        $display("Correct: %0b", cum_sum == 49046150754);
         $fclose(fd);
         $finish;
     end 

@@ -22,14 +22,17 @@ def prim_calc(cur_base: int, block_size: int, ub: int, r: int = -1) -> int:
     if r == -1:
         raise NotImplementedError()
     
+    block_size = int(block_size)
     prim_sub = 0
     if verbose:
         print(f"\nr: {r}", "=" * 30)
         print(f"\ten: {int(block_size % r == 0 and r < block_size)}")
-    if block_size % r == 0 and r < block_size:
+    prim_en = r < block_size and (r == 1 or not (block_size & 0b1))
+    if prim_en:
 
         rep_base = 0
-        for k in range(block_size // r):
+        rep_base_bound = int(block_size) if r == 1 else block_size >> 1
+        for k in range(rep_base_bound):
             rep_base = rep_base + pow10(k * r)
         
         lb_r = pow10(r - 1) if r != 1 else 1
@@ -158,5 +161,5 @@ for id_range in f.read().split(','):
         print(f"end: {count_combs(end)} start: {count_combs(start - 1)} diff: {count_combs(end) - count_combs(start - 1)}")
     
 print(f"Id sum is: {id_sum}")
-# print(f"Correct: {49046150754 == id_sum}")
+print(f"Correct: {49046150754 == id_sum}")
 f.close()
