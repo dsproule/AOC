@@ -14,11 +14,15 @@ module group_count #(
     localparam group_count_latency = 4;
 
     logic group_en, cur_base_valid;
-    logic [`DATA_WIDTH-1:0] block_size;
+    logic [`LONG_DATA_WIDTH-1:0] base10;
+    logic [`DATA_WIDTH-1:0]      block_size;
 
     assign group_en = (n_digs_in % group_count_n) == '0;
     assign block_size = n_digs_in / group_count_n;
     assign cur_base_valid = (k > group_count_n);
+
+    // resource sharing
+    assign base10 =  pow10((k <= group_count_n) ? k * block_size : block_size - 1);
 
     logic [`DATA_WIDTH-1:0] cur_base;
     int unsigned k, pow_m;
@@ -29,14 +33,14 @@ module group_count #(
             pow_m <= '0;
         end else if (k <= group_count_n) begin
             k <= k + 1;
-            pow_m <= pow10(k * block_size);
+            pow_m <= base10;
             cur_base <= pow_m + cur_base;
         end
     end
 
     logic [`DATA_WIDTH-1:0] lb_next, ub_cand_0, ub_cand_1, ub_next, lb, ub;
     always_comb begin
-        lb_next = (block_size == 1) ? 1 : pow10(block_size - 1);
+        lb_next = (block_size == 1) ? 1 : base10;
         
         ub_cand_0 = pow10(block_size) - 1;
         ub_cand_1 = n_in / cur_base;

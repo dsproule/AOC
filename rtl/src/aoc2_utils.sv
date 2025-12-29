@@ -27,7 +27,7 @@ module pref_lookup(
 
     output logic [`LONG_DATA_WIDTH-1:0] value
 );
-
+    // precomputed lookup table for 10 digits
     always_comb begin
         case (idx)
             4'd0:  value = 64'd0;

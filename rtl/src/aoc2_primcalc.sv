@@ -10,19 +10,17 @@ module prim_calc(
 );
     localparam prim_latency = 4;
 
-    logic prim_en;
+    int unsigned k, k_bound, pow_m;
+    logic        prim_en, rep_base_valid;
+    logic [`DATA_WIDTH-1:0]      rep_base;
+    logic [`LONG_DATA_WIDTH-1:0] base10;
+
+    // enables the entire block
     assign prim_en = r < block_size_in && (r == 1 || !(block_size_in & 1'b1)) && cur_base_valid;
 
-    logic rep_base_valid;
     assign rep_base_valid = (k > (block_size_in / r) && cur_base_valid);
-
-    logic [`DATA_WIDTH-1:0] rep_base;
-    int unsigned k, k_bound, pow_m;
-
     assign k_bound = (r == 1) ? block_size_in : block_size_in >> 1;
-
-    logic [`LONG_DATA_WIDTH-1:0] base10;
-    assign base10 =  pow10(((k <= k_bound && cur_base_valid)) ? k * r : r - 1);
+    assign base10 =  pow10((k <= k_bound && cur_base_valid) ? k * r : r - 1);
 
     always_ff @(posedge clock) begin
         if (reset || !input_valid) begin
