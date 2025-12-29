@@ -11,6 +11,8 @@ module group_count #(
     output logic [`LONG_DATA_WIDTH-1:0] group_count_out
 );
 
+    localparam group_count_latency = 4;
+
     logic group_en;
     assign group_en = (n_digs_in % group_count_n) == '0;
 
@@ -34,34 +36,34 @@ module group_count #(
         end
     end
 
-    logic [`DATA_WIDTH-1:0] lb, ub_cand_0, ub_cand_1, ub, lb_reg, ub_reg;
+    logic [`DATA_WIDTH-1:0] lb_next, ub_cand_0, ub_cand_1, ub_next, lb, ub;
     always_comb begin
-        lb = (block_size == 1) ? 1 : pow10(block_size - 1);
+        lb_next = (block_size == 1) ? 1 : pow10(block_size - 1);
         
         ub_cand_0 = pow10(block_size) - 1;
         ub_cand_1 = n_in / cur_base;
 
-        ub = (ub_cand_0 < ub_cand_1) ? ub_cand_0 : ub_cand_1;
+        ub_next = (ub_cand_0 < ub_cand_1) ? ub_cand_0 : ub_cand_1;
     end
 
     always_ff @(posedge clock) begin
         if (reset) begin
-            lb_reg <= '0;
-            ub_reg <= '0;
+            lb <= '0;
+            ub <= '0;
         end else begin
-            lb_reg <= lb;
-            ub_reg <= ub;
+            lb <= lb_next;
+            ub <= ub_next;
         end
     end
 
-    logic [`DATA_WIDTH-1:0] S, N, M, S_reg, N_reg, M_reg;
-    logic [`LONG_DATA_WIDTH-1:0] tmp_sum, tmp_sum_reg;
+    logic [`DATA_WIDTH-1:0] S_next, N_next, M_next, S, N, M;
+    logic [`LONG_DATA_WIDTH-1:0] tmp_sum_next, tmp_sum;
 
     always_comb begin
-        S = lb_reg + ub_reg;
-        N = ub_reg - lb_reg + 1;
-        M = (S_reg * N_reg) >> 1;
-        tmp_sum = cur_base * M_reg;
+        S_next = lb + ub;
+        N_next = ub - lb + 1;
+        M_next = (S * N) >> 1;
+        tmp_sum_next = cur_base * M;
     end
 
     int unsigned tmp_sum_cycles;
@@ -69,23 +71,23 @@ module group_count #(
 
     always_ff @(posedge clock) begin
         if (reset) begin
-            S_reg   <= '0;
-            N_reg   <= '0;
-            M_reg   <= '0;
             tmp_sum <= '0;
+            S       <= '0;
+            N       <= '0;
+            M       <= '0;
             tmp_sum_cycles <= '0;
         end else if (cur_base_valid) begin
-            S_reg   <= S;
-            N_reg   <= N;
-            M_reg   <= M;
-            tmp_sum_reg <= tmp_sum;
+            tmp_sum <= tmp_sum_next;
+            S       <= S_next;
+            N       <= N_next;
+            M       <= M_next;
             
-            if (tmp_sum_cycles < 4)
+            if (tmp_sum_cycles < group_count_latency)
                 tmp_sum_cycles <= tmp_sum_cycles + 1;
         end
     end
     
-    assign tmp_sum_valid = (tmp_sum_cycles == 4);
+    assign tmp_sum_valid = (tmp_sum_cycles == group_count_latency);
 
     logic [`LONG_DATA_WIDTH-1:0] prim_sub_out, prim_sub_out_1, prim_sub_out_2;
     logic prim_sub_out_valid, prim_sub_out_1_valid, prim_sub_out_2_valid;
@@ -103,6 +105,7 @@ module group_count #(
         .prim_sub_out(prim_sub_out)
     );
 
+    // FSM used to share resource of prim_calc
     always_comb begin
         prim_sub_en_next = prim_sub_en;
         input_valid_next = input_valid;
@@ -158,7 +161,7 @@ module group_count #(
         end
     end
 
-    assign group_count_out = (group_en) ? tmp_sum_reg - prim_sub_out_1 - prim_sub_out_2 : '0;
+    assign group_count_out = (group_en) ? tmp_sum - prim_sub_out_1 - prim_sub_out_2 : '0;
     assign group_count_out_valid = tmp_sum_valid & prim_sub_out_1_valid & prim_sub_out_2_valid;
 
 endmodule

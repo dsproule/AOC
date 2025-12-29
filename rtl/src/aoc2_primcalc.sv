@@ -8,6 +8,7 @@ module prim_calc(
     output logic prim_sub_out_valid,
     output logic [`LONG_DATA_WIDTH-1:0] prim_sub_out
 );
+    localparam prim_latency = 4;
 
     logic prim_en;
     assign prim_en = r < block_size_in && (r == 1 || !(block_size_in & 1'b1)) && cur_base_valid;
@@ -32,51 +33,51 @@ module prim_calc(
         end
     end
 
-    logic [`DATA_WIDTH-1:0] lb_r, ub_r, lb_r_reg, ub_r_reg;
-    logic [`DATA_WIDTH-1:0] S, N, BM, M, S_reg, N_reg, BM_reg, M_reg;
-    logic [`LONG_DATA_WIDTH-1:0] PS, PS_reg;
+    logic [`DATA_WIDTH-1:0] lb_r_next, ub_r_next, lb_r, ub_r;
+    logic [`DATA_WIDTH-1:0] S_next, N_next, BM_next, M_next, S, N, BM, M;
+    logic [`LONG_DATA_WIDTH-1:0] PS_next, PS;
 
     always_comb begin
-        lb_r = (r == 1) ? 1 : pow10(r - 1);
-        ub_r = ub_in / rep_base;
+        lb_r_next = (r == 1) ? 1 : pow10(r - 1);
+        ub_r_next = ub_in / rep_base;
 
-        S = lb_r_reg + ub_r_reg;
-        N = ub_r_reg - lb_r_reg + 1;
-        M = (S_reg * N_reg) >> 1;
-        BM = cur_base_in * rep_base;
+        S_next = lb_r + ub_r;
+        N_next = ub_r - lb_r + 1;
+        M_next = (S * N) >> 1;
+        BM_next = cur_base_in * rep_base;
 
-        PS = (ub_r_reg >= lb_r_reg) ? BM * M : '0;
+        PS_next = (ub_r >= lb_r) ? BM * M : '0;
     end
 
     int unsigned prim_sub_cycles;
     always_ff @(posedge clock) begin
         if (reset || !input_valid) begin
-            ub_r_reg <= '0;
-            lb_r_reg <= '0;
+            ub_r <= '0;
+            lb_r <= '0;
 
-            S_reg  <= '0;
-            N_reg  <= '0;
-            M_reg  <= '0;
-            BM_reg <= '0;
+            S  <= '0;
+            N  <= '0;
+            M  <= '0;
+            BM <= '0;
 
-            PS_reg    <= PS;
+            PS    <= '0;
             prim_sub_cycles <= '0;
         end else if (rep_base_valid) begin
-            ub_r_reg <= ub_r;
-            lb_r_reg <= lb_r;
+            ub_r <= ub_r_next;
+            lb_r <= lb_r_next;
 
-            S_reg <= S;
-            N_reg <= N;
-            M_reg <= M;
-            BM_reg <= BM;
+            S <= S_next;
+            N <= N_next;
+            M <= M_next;
+            BM <= BM_next;
 
-            PS_reg <= PS;
-            if (prim_sub_cycles < 3)
+            PS <= PS_next;
+            if (prim_sub_cycles < prim_latency)
                 prim_sub_cycles <= prim_sub_cycles + 1;
         end
     end
 
-    assign prim_sub_out_valid = (prim_sub_cycles == 3) || (~prim_en && cur_base_valid);
-    assign prim_sub_out = (prim_en) ? PS_reg : '0;
+    assign prim_sub_out_valid = (prim_sub_cycles == prim_latency) || (~prim_en && cur_base_valid);
+    assign prim_sub_out = (prim_en) ? PS : '0;
 
 endmodule
