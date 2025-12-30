@@ -6,8 +6,9 @@
 #include <algorithm>
 
 const size_t MAX_WIDTH = 256;
-const size_t STREAM_UB_LOG_2 = 256;
-
+constexpr size_t LEFT_REGS_END = 16;
+constexpr size_t RIGHT_REGS_END = 32;
+constexpr size_t REGS_SIZE = 16;
 using tuple_pair_t = std::pair<uint64_t, uint64_t>;
 
 class Sorter {
@@ -113,10 +114,6 @@ int main() {
             stream.push_back({ start, end });
         }
     }
-    
-    constexpr int LEFT_REGS_END = 16;
-    constexpr int RIGHT_REGS_END = 32;
-    constexpr int REGS_SIZE = 16;
 
     // Main algorithm
     Mem mem_inst = Mem();
@@ -177,13 +174,12 @@ int main() {
     int list_lens = 32;
     while (list_lens <= MAX_WIDTH) {
         int first_list_i = 0;
-        std::cout << list_lens << "\n";
         
         auto list_end = [list_lens](int list_base_i) -> int {
             return list_base_i + list_lens - 1;
         };
 
-        while (first_list_i + (list_lens * 2) <= STREAM_UB_LOG_2) { 
+        while (first_list_i + (list_lens * 2) <= MAX_WIDTH) { 
             // copy second sorted list to end
             for (int off = 0; off < list_lens; off++) {
                 tuple_pair_t aux_list_pair = mem_inst.load_mem(list_end(first_list_i + list_lens) - off);
@@ -212,7 +208,7 @@ int main() {
                 sort_mem_i--;
 
             }
- 
+
             // move rest of list into place
             while (sl_ptr > (MAX_WIDTH * 2) - list_lens - 1) {
                 sl_reg = mem_inst.load_mem(sl_ptr);
@@ -225,13 +221,23 @@ int main() {
         list_lens *= 2;
     }
 
-    // std::cout << mem_i << "\n";
-    // for (int j = (MAX_WIDTH * 2) - list_lens; j < MAX_WIDTH * 2; j++) {
-    for (int j = 0; j < MAX_WIDTH * 2; j++) {
-        tuple_pair_t pair = mem_inst.load_mem(j);
-        std::cout << "(" << pair.first << ", " << pair.second << ")\n";
+    int padding = MAX_WIDTH - stream.size();
+    // phase 3 --------------- merge intervals
+    uint64_t cum_sum = 0;
+    tuple_pair_t prev_intv{1, 0}, cur_intv;
+    for (int j = padding; j < padding + stream.size(); j++) {
+        cur_intv = mem_inst.load_mem(j);
+        if (cur_intv.first <= prev_intv.second) {
+            // merge
+            prev_intv.second = std::max(cur_intv.second, prev_intv.second);
+        } else {
+            cum_sum += prev_intv.second - prev_intv.first + 1;
+            prev_intv = cur_intv;
+        }
     }
-    std::cout << stream.size() << "\n"; 
+    cum_sum += prev_intv.second - prev_intv.first + 1;
+    std::cout << "Answer: " << cum_sum << "\n";
+    std::cout << "Correct: " << (343143696885053 == cum_sum) << "\n";
     
     infile.close();
     return 0;
