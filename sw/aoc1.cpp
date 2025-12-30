@@ -24,6 +24,7 @@ int main() {
         }
         zeros += (cur_pos == 0);
     }
+    file.close();
     std::cout << "Code is: " << zeros << "\n";
 
     return 0;

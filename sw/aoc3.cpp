@@ -28,5 +28,6 @@ int main() {
         }
         all_max += bank_max;
     }
+    file.close();
     std::cout << all_max << "\n";
 }

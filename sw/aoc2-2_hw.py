@@ -144,9 +144,6 @@ def count_combs(n: int) -> int:
         print(f"pref: {pref_lookup[n_digs - 1]}\ncount_out: {cum_sum + pref_lookup[n_digs - 1]}")
     return cum_sum + pref_lookup[n_digs - 1]
 
-# count = group_count(n_in, get_digs(n_in), group_count_n=2)
-# if verbose:
-#     print(f"count_out: {count}")
 id_sum = 0
 pref_lookup[0] = pref_lookup[1] = 0
 for k in range(2, 11):

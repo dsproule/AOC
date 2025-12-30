@@ -35,6 +35,7 @@ int main() {
         cur_pos = next_pos;
         zeros += (cur_pos == 0);
     }
+    file.close();
     std::cout << "Code is: " << zeros << "\n";
 
     return 0;

@@ -31,6 +31,7 @@ int main() {
 
         cum_sum += tmp_sum;
     }
+    file.close();
     std::cout << "Code: " << cum_sum << "\n";
     std::cout << "Correct: " << ((cum_sum == 167523425665348) ? "true" : "false") << "\n";
 }

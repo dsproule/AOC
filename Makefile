@@ -1,4 +1,4 @@
-CXXFLAGS = -std=c++17 -O2
+CXXFLAGS = -std=c++20 -O2
 VFLAGS = -g2012
 TARGET := aoc
 
