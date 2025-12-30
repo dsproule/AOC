@@ -2,15 +2,12 @@
 #include <string>
 #include <iostream>
 
+const int lock_max = 100; 
+int cur_pos = 50, zeros = 0;
+
 int main() {
-    const int lock_max = 100; 
-    std::string line;
-    int cur_pos = 50, zeros = 0;
     std::ifstream file("input1.txt");
-    if (!file) {
-        std::cout << "input1.txt does not exist\n";
-        exit(1);
-    }
+    std::string line;
 
     int next_pos, cnt = 0;
     while (std::getline(file, line)) {
