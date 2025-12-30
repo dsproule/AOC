@@ -6,6 +6,7 @@
 #include <algorithm>
 
 const size_t MAX_WIDTH = 256;
+const size_t STREAM_UB_LOG_2 = 256;
 
 using tuple_pair_t = std::pair<uint64_t, uint64_t>;
 
@@ -174,15 +175,15 @@ int main() {
 
     // phase 2 ----- merging streams
     int list_lens = 32;
-    while (list_lens < MAX_WIDTH) {
-        // first list start_i
+    while (list_lens <= MAX_WIDTH) {
         int first_list_i = 0;
+        std::cout << list_lens << "\n";
         
         auto list_end = [list_lens](int list_base_i) -> int {
             return list_base_i + list_lens - 1;
         };
 
-        while (first_list_i + (list_lens * 2) < stream.size()) { 
+        while (first_list_i + (list_lens * 2) <= STREAM_UB_LOG_2) { 
             // copy second sorted list to end
             for (int off = 0; off < list_lens; off++) {
                 tuple_pair_t aux_list_pair = mem_inst.load_mem(list_end(first_list_i + list_lens) - off);
@@ -211,15 +212,22 @@ int main() {
                 sort_mem_i--;
 
             }
+ 
+            // move rest of list into place
+            while (sl_ptr > (MAX_WIDTH * 2) - list_lens - 1) {
+                sl_reg = mem_inst.load_mem(sl_ptr);
+                mem_inst.store_mem(sl_reg.first, sl_reg.second, sort_mem_i--);
+                sl_ptr--;
+            }
+
             first_list_i += list_lens * 2;
         }
         list_lens *= 2;
     }
 
-
-    std::cout << mem_i << "\n";
+    // std::cout << mem_i << "\n";
     // for (int j = (MAX_WIDTH * 2) - list_lens; j < MAX_WIDTH * 2; j++) {
-    for (int j = 0; j < stream.size(); j++) {
+    for (int j = 0; j < MAX_WIDTH * 2; j++) {
         tuple_pair_t pair = mem_inst.load_mem(j);
         std::cout << "(" << pair.first << ", " << pair.second << ")\n";
     }
