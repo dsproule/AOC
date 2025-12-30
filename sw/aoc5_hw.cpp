@@ -90,7 +90,7 @@ class Mem {
     }
 
  private: 
-    std::array<std::array<tuple_pair_t, 2>, 256> bram_start_bank_;
+    std::array<std::array<tuple_pair_t, 2>, MAX_WIDTH * 2> bram_start_bank_;
 };
 
 int main() {
@@ -115,7 +115,7 @@ int main() {
     
     constexpr int LEFT_REGS_END = 16;
     constexpr int RIGHT_REGS_END = 32;
-    constexpr int MAX_VALUES = 16;
+    constexpr int REGS_SIZE = 16;
 
     // Main algorithm
     Mem mem_inst = Mem();
@@ -125,54 +125,105 @@ int main() {
     for (int i = 0; i < stream.size(); i++)
         mem_inst.store_mem(stream[i].first, stream[i].second, i);
 
-    std::vector<std::vector<tuple_pair_t>> pairs(2);
-    // loop
+    std::vector<std::vector<tuple_pair_t>> regs_in(2), regs_out(2);
     int mem_i = 0;
+    // phase 1 ------- sorting in mem
     while (mem_i < stream.size()) {
-        pairs[0].clear();
-        pairs[1].clear();
+        regs_in[0].clear();
+        regs_in[1].clear();
 
-        std::cout << "mem_i: " << mem_i << "\n";
-        for (int j = mem_i; j < mem_i + MAX_VALUES; j++)
-            pairs[0].push_back(mem_inst.load_mem(j));
-        for (int j = mem_i + MAX_VALUES; j < mem_i + 2 * MAX_VALUES; j++)
-            pairs[1].push_back(mem_inst.load_mem(j));
+        for (int j = mem_i; j < mem_i + REGS_SIZE; j++)
+            regs_in[0].push_back(mem_inst.load_mem(j));
+        for (int j = mem_i + REGS_SIZE; j < mem_i + 2 * REGS_SIZE; j++)
+            regs_in[1].push_back(mem_inst.load_mem(j));
 
         // do two sorts
-        std::span<tuple_pair_t, 16> regs_0(pairs[0].data(), 16);
-        std::span<tuple_pair_t, 16> regs_1(pairs[1].data(), 16);
+        sort_inst.bitonic_sort_16(std::span<tuple_pair_t, REGS_SIZE>(regs_in[0].data(), REGS_SIZE));
+        sort_inst.bitonic_sort_16(std::span<tuple_pair_t, REGS_SIZE>(regs_in[1].data(), REGS_SIZE));
         
-        sort_inst.bitonic_sort_16(regs_0);
-        sort_inst.bitonic_sort_16(regs_1);
+        // pipelining drives this
+        regs_out[0].clear();
+        regs_out[1].clear();
+        for (int j = mem_i; j < mem_i + REGS_SIZE; j++) {
+            regs_out[0].push_back(regs_in[0][j]);
+            regs_out[1].push_back(regs_in[1][j]);
+        }
 
-        // load into [0:32]
-        int left_regs_ptr = 0, right_regs_ptr = 0;
-        while (left_regs_ptr < MAX_VALUES && right_regs_ptr < MAX_VALUES) {
-            if (pairs[0][left_regs_ptr] < pairs[1][right_regs_ptr]) {
-                mem_inst.store_mem(pairs[0][left_regs_ptr].first, pairs[0][left_regs_ptr].second, mem_i);
+        int left_regs_ptr, right_regs_ptr;
+        left_regs_ptr = right_regs_ptr = 0;
+        while (left_regs_ptr < REGS_SIZE && right_regs_ptr < REGS_SIZE) {
+            if (regs_in[0][left_regs_ptr] < regs_in[1][right_regs_ptr]) {
+                mem_inst.store_mem(regs_in[0][left_regs_ptr].first, regs_in[0][left_regs_ptr].second, mem_i);
                 left_regs_ptr++;
             } else {
-                mem_inst.store_mem(pairs[1][right_regs_ptr].first, pairs[1][right_regs_ptr].second, mem_i);
+                mem_inst.store_mem(regs_in[1][right_regs_ptr].first, regs_in[1][right_regs_ptr].second, mem_i);
                 right_regs_ptr++;
             }
             mem_i++;
         }
 
-        while (left_regs_ptr < MAX_VALUES) {
-            mem_inst.store_mem(pairs[0][left_regs_ptr].first, pairs[0][left_regs_ptr].second, mem_i++);
+        while (left_regs_ptr < REGS_SIZE) {
+            mem_inst.store_mem(regs_in[0][left_regs_ptr].first, regs_in[0][left_regs_ptr].second, mem_i++);
             left_regs_ptr++;
         }
-        while (right_regs_ptr < MAX_VALUES) {
-            mem_inst.store_mem(pairs[1][right_regs_ptr].first, pairs[1][right_regs_ptr].second, mem_i++);
+        while (right_regs_ptr < REGS_SIZE) {
+            mem_inst.store_mem(regs_in[1][right_regs_ptr].first, regs_in[1][right_regs_ptr].second, mem_i++);
             right_regs_ptr++;
         }
-
-        for (int j = mem_i - 32; j < mem_i; j++) {
-            tuple_pair_t pair = mem_inst.load_mem(j);
-            std::cout << "(" << pair.first << ", " << pair.second << ")\n";
-        }
     }
+
+    // phase 2 ----- merging streams
+    int list_lens = 32;
+    while (list_lens < MAX_WIDTH) {
+        // first list start_i
+        int first_list_i = 0;
+        
+        auto list_end = [list_lens](int list_base_i) -> int {
+            return list_base_i + list_lens - 1;
+        };
+
+        while (first_list_i + (list_lens * 2) < stream.size()) { 
+            // copy second sorted list to end
+            for (int off = 0; off < list_lens; off++) {
+                tuple_pair_t aux_list_pair = mem_inst.load_mem(list_end(first_list_i + list_lens) - off);
+                mem_inst.store_mem(aux_list_pair.first, aux_list_pair.second, (MAX_WIDTH * 2) - 1 - off);
+            }
+
+            // place pointer at end of both lists
+            int fl_ptr = list_end(first_list_i), sl_ptr = (MAX_WIDTH * 2) - 1;
+            int sort_mem_i = list_end(first_list_i + list_lens);
+
+            tuple_pair_t fl_reg, sl_reg;
+            bool fl_valid = false, sl_valid = false;
+            while (fl_ptr > first_list_i - 1 && sl_ptr > (MAX_WIDTH * 2) - list_lens - 1) {
+                if (!fl_valid) fl_reg = mem_inst.load_mem(fl_ptr);
+                if (!sl_valid) sl_reg = mem_inst.load_mem(sl_ptr);
+
+                if (fl_reg.first > sl_reg.first) {
+                    mem_inst.store_mem(fl_reg.first, fl_reg.second, sort_mem_i);
+                    fl_valid = false;
+                    fl_ptr--;
+                } else {
+                    mem_inst.store_mem(sl_reg.first, sl_reg.second, sort_mem_i);
+                    sl_valid = false;
+                    sl_ptr--;
+                }
+                sort_mem_i--;
+
+            }
+            first_list_i += list_lens * 2;
+        }
+        list_lens *= 2;
+    }
+
+
     std::cout << mem_i << "\n";
+    // for (int j = (MAX_WIDTH * 2) - list_lens; j < MAX_WIDTH * 2; j++) {
+    for (int j = 0; j < stream.size(); j++) {
+        tuple_pair_t pair = mem_inst.load_mem(j);
+        std::cout << "(" << pair.first << ", " << pair.second << ")\n";
+    }
+    std::cout << stream.size() << "\n"; 
     
     infile.close();
     return 0;
