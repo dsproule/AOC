@@ -187,11 +187,15 @@ int main() {
             return list_base_i + list_lens - 1;
         };
 
+        // parallelize the move for quicker iteration
         while (first_list_i + (list_lens * 2) <= MAX_WIDTH) { 
             // copy second sorted list to end
-            for (int off = 0; off < list_lens; off++) {
-                tuple_pair_t aux_list_pair = mem_inst.load_mem(list_end(first_list_i + list_lens) - off);
-                mem_inst.store_mem(aux_list_pair.first, aux_list_pair.second, (MAX_WIDTH * 2) - 1 - off);
+            for (int off = 0; off < list_lens; off = off + 2) {
+                tuple_pair_t aux_list_pair_0 = mem_inst.load_mem(list_end(first_list_i + list_lens) - off);
+                tuple_pair_t aux_list_pair_1 = mem_inst.load_mem(list_end(first_list_i + list_lens) - (off + 1));
+
+                mem_inst.store_mem(aux_list_pair_0.first, aux_list_pair_0.second, (MAX_WIDTH * 2) - 1 - off);
+                mem_inst.store_mem(aux_list_pair_1.first, aux_list_pair_1.second, (MAX_WIDTH * 2) - 1 - (off + 1));
             }
 
             // place pointer at end of both lists
@@ -230,6 +234,7 @@ int main() {
     }
 
     int padding = MAX_WIDTH - stream.size();
+    
     // phase 3 --------------- merge intervals
     uint64_t cum_sum = 0;
     tuple_pair_t prev_intv{1, 0}, cur_intv;
