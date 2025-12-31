@@ -9,6 +9,7 @@ const size_t MAX_WIDTH = 256;
 constexpr size_t LEFT_REGS_END = 16;
 constexpr size_t RIGHT_REGS_END = 32;
 constexpr size_t REGS_SIZE = 16;
+
 using tuple_pair_t = std::pair<uint64_t, uint64_t>;
 
 class Sorter {
