@@ -60,35 +60,38 @@ class FreeMachine{
 
     void run() {
         changed_ = false;
-        for (size_t row_i = 0; row_i < MAX_ROWS; row_i++) {
+        for (size_t row_i = start_row_; row_i < end_row_; row_i++) {
+            const Mem::bank_vec_t top_regs = (row_i == 0) ? Mem::zero_row_ : mem_inst_.load_vec(row_i - 1);
+            const Mem::bank_vec_t bot_regs = (row_i == MAX_ROWS - 1) ? Mem::zero_row_ : mem_inst_.load_vec(row_i + 1);
+                  Mem::bank_vec_t mid_regs = mem_inst_.load_vec(row_i);
+
             for (size_t col_i = 0; col_i < MAX_COLS; col_i++) {
-                Mem::tile_map map = load_tile(row_i, col_i);
+                Mem::tile_map map = load_tile(top_regs, mid_regs, bot_regs, col_i);
                 uint32_t degree =  map[0][0] + map[0][1] + map[0][2]
                             + map[1][0] +             map[1][2]
                             + map[2][0] + map[2][1] + map[2][2];
                 
                 if (map[1][1] && degree < 4) {
                     updates_++;
-                    mem_inst_.store_mem(row_i, col_i, 0);
+                    mid_regs[col_i + 1] = 0;
                     changed_ = true;
                 }
             }
+            
+            for (size_t col_i = 0; col_i < MAX_COLS; col_i++)
+                mem_inst_.store_mem(row_i, col_i, mid_regs[col_i + 1]);
         }
     }
 
     FreeMachine(size_t start_row, size_t end_row, Mem& mem) 
         : start_row_(start_row), end_row_(end_row), mem_inst_(mem) {}
  private:
-    Mem::tile_map load_tile(size_t row_i, size_t col) {
-        // parallel bank accesses
-        const Mem::bank_vec_t& top = (row_i == 0) ? Mem::zero_row_ : mem_inst_.load_vec(row_i - 1);
-        const Mem::bank_vec_t& mid = mem_inst_.load_vec(row_i);
-        const Mem::bank_vec_t& bot = (row_i == MAX_ROWS - 1) ? Mem::zero_row_ : mem_inst_.load_vec(row_i + 1);
-
+    Mem::tile_map load_tile(const Mem::bank_vec_t& top, const Mem::bank_vec_t& mid, const Mem::bank_vec_t& bot, size_t col) { 
         col++;
         return {{ {top[col - 1], top[col], top[col + 1]}, 
                  {mid[col - 1], mid[col], mid[col + 1]}, 
                  {bot[col - 1], bot[col], bot[col + 1]} }};
+
     }
 
     Mem& mem_inst_;
@@ -112,11 +115,40 @@ int main() {
         row++;
     }
     // Phase 2 ------------ the sweeps
-    FreeMachine mach_0 = FreeMachine(0, MAX_ROWS, mem_inst);
-    while (mach_0.changed_)
-        mach_0.run();
+    constexpr size_t MACH_N = 4;            // segments to break down (traversals take less time for grid)
+    constexpr size_t MACH_DUPL = 2;         // increases throughput (lines resolved quicker)
+    constexpr size_t MACH_ROWS = MAX_ROWS / MACH_N; 
+    assert (MACH_ROWS > 3 * MACH_DUPL);     // make sure we have a gap for machines in same segments
+    std::vector<FreeMachine> machs;
 
+    for (size_t mach_i = 0; mach_i < MACH_N; mach_i++) {
+        if (mach_i == MACH_N - 1)
+            machs.push_back(FreeMachine(mach_i * MACH_ROWS, MAX_ROWS, mem_inst));
+        else
+            machs.push_back(FreeMachine(mach_i * MACH_ROWS, mach_i * MACH_ROWS + MACH_ROWS, mem_inst));
+    }
+
+    bool any_changed = true;
+    int iters = 0;
+    while (any_changed) {
+        iters++;
+        any_changed = false;
+        for (FreeMachine& mach : machs) {
+            for (int dupl = 0; dupl < MACH_DUPL; dupl++)
+                mach.run();
+            any_changed |= mach.changed_;
+        }
+    }
     // mem_inst.print();
-    std::cout << "Answer is: " << mach_0.updates_ << "\n";
-    
+    // std::cout << "\n";
+    int all_updates = 0;
+    for (FreeMachine& mach : machs) {
+        // std::cout << "(Mach): " << mach.updates_ << "\n";
+        all_updates += mach.updates_;
+    }
+
+    // std::cout << "Took " << iters << " iters\n";
+    std::cout << "Answer is: " << all_updates << "\n";
+    std::cout << "Correct: " << (all_updates == 8484) << "\n";
+
 }
