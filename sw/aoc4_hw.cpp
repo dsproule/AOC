@@ -49,7 +49,9 @@ class Mem {
 
  private: 
     // looks much worse than it is. index by bram[bank][row][col]
-    std::array<std::array<std::array<bool, MAX_COLS + 2>, (MAX_ROWS + n_banks - 1) / n_banks>, n_banks> bram_banks_;
+    using bank = std::array<std::array<bool, MAX_COLS + 2>, (MAX_ROWS + n_banks - 1) / n_banks>;
+
+    std::array<bank, n_banks> bram_banks_;
     std::array<bool, MAX_ROWS> dirty_list_{};
 };
 
@@ -61,37 +63,33 @@ class FreeMachine{
     void run() {
         changed_ = false;
         for (size_t row_i = start_row_; row_i < end_row_; row_i++) {
-            const Mem::bank_vec_t top_regs = (row_i == 0) ? Mem::zero_row_ : mem_inst_.load_vec(row_i - 1);
-            const Mem::bank_vec_t bot_regs = (row_i == MAX_ROWS - 1) ? Mem::zero_row_ : mem_inst_.load_vec(row_i + 1);
-                  Mem::bank_vec_t mid_regs = mem_inst_.load_vec(row_i);
-
             for (size_t col_i = 0; col_i < MAX_COLS; col_i++) {
-                Mem::tile_map map = load_tile(top_regs, mid_regs, bot_regs, col_i);
+                Mem::tile_map map = load_tile(row_i, col_i);
                 uint32_t degree =  map[0][0] + map[0][1] + map[0][2]
                             + map[1][0] +             map[1][2]
                             + map[2][0] + map[2][1] + map[2][2];
                 
                 if (map[1][1] && degree < 4) {
                     updates_++;
-                    mid_regs[col_i + 1] = 0;
+                    mem_inst_.store_mem(row_i, col_i, 0);
                     changed_ = true;
                 }
             }
-            
-            for (size_t col_i = 0; col_i < MAX_COLS; col_i++)
-                mem_inst_.store_mem(row_i, col_i, mid_regs[col_i + 1]);
         }
     }
 
     FreeMachine(size_t start_row, size_t end_row, Mem& mem) 
         : start_row_(start_row), end_row_(end_row), mem_inst_(mem) {}
  private:
-    Mem::tile_map load_tile(const Mem::bank_vec_t& top, const Mem::bank_vec_t& mid, const Mem::bank_vec_t& bot, size_t col) { 
-        col++;
-        return {{ {top[col - 1], top[col], top[col + 1]}, 
-                 {mid[col - 1], mid[col], mid[col + 1]}, 
-                 {bot[col - 1], bot[col], bot[col + 1]} }};
+    Mem::tile_map load_tile(size_t row_i, size_t col_i) { 
+        const Mem::bank_vec_t& top_regs = (row_i == 0) ? Mem::zero_row_ : mem_inst_.load_vec(row_i - 1);
+        const Mem::bank_vec_t& bot_regs = (row_i == MAX_ROWS - 1) ? Mem::zero_row_ : mem_inst_.load_vec(row_i + 1);
+        const Mem::bank_vec_t& mid_regs = mem_inst_.load_vec(row_i);
 
+        col_i++;
+        return {{ {top_regs[col_i - 1], top_regs[col_i], top_regs[col_i + 1]}, 
+                 {mid_regs[col_i - 1], mid_regs[col_i], mid_regs[col_i + 1]}, 
+                 {bot_regs[col_i - 1], bot_regs[col_i], bot_regs[col_i + 1]} }};
     }
 
     Mem& mem_inst_;
