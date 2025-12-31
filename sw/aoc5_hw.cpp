@@ -84,16 +84,17 @@ class Sorter {
 class Mem {
  public:
     void store_mem(uint64_t start, uint64_t end, int i) {
-        assert (i < bram_start_bank_.size());
-        bram_start_bank_[i][0] = { start, end };
+        assert (i / n_banks < bram_start_bank_[i % n_banks].size());
+        bram_start_bank_[i % n_banks][i / n_banks] = { start, end };
     }
 
     tuple_pair_t load_mem(int i) {
-        return { bram_start_bank_[i][0] };
+        return { bram_start_bank_[i % n_banks][i / n_banks] };
     }
 
  private: 
-    std::array<std::array<tuple_pair_t, 2>, MAX_WIDTH * 2> bram_start_bank_;
+    static constexpr size_t n_banks = 2;
+    std::array<std::array<tuple_pair_t, ((MAX_WIDTH * 2) + n_banks - 1) / n_banks>, n_banks> bram_start_bank_;
 };
 
 int main() {
