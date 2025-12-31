@@ -3,8 +3,6 @@
 #include <iostream>
 #include <array>
 #include <cassert>
-#include <ranges>
-#include <algorithm>
 
 constexpr size_t MAX_ROWS = 139;
 constexpr size_t MAX_COLS = MAX_ROWS;
@@ -14,7 +12,10 @@ using row_vec_t = std::array<bool, MAX_COLS>;
 class Mem {
  public:
     using tile_map = std::array<std::array<bool, 3>, 3>;
+    using bank_vec_t = std::array<bool, MAX_COLS + 2>;
+    
     static constexpr size_t n_banks = 3;
+    static constexpr bank_vec_t zero_row_{};
 
     void store_mem(size_t row_i, size_t col_i, bool value) {
         bank_vec_t bank_vec = (!dirty_list_[row_i]) ? zero_row_ : bram_banks_[row_i % n_banks][row_i / n_banks];
@@ -26,20 +27,8 @@ class Mem {
         bram_banks_[row_i % n_banks][row_i / n_banks] = bank_vec;
     }
 
-    tile_map load_mem(size_t row_i, size_t col) {
-        assert (row_i >= 0 && row_i < MAX_ROWS);
-        assert (col >= 0 && col < MAX_COLS);
-        assert (dirty_list_[row_i]);
-
-        // parallel bank accesses
-        const bank_vec_t& top = (row_i == 0) ? zero_row_ : bram_banks_[(row_i - 1) % n_banks][(row_i - 1)  / n_banks];
-        const bank_vec_t& mid = bram_banks_[row_i % n_banks][row_i / n_banks];
-        const bank_vec_t& bot = (row_i == MAX_ROWS - 1) ? zero_row_ : bram_banks_[(row_i + 1) % n_banks][(row_i + 1) / n_banks];
-
-        col++;
-        return {{ {top[col - 1], top[col], top[col + 1]}, 
-                 {mid[col - 1], mid[col], mid[col + 1]}, 
-                 {bot[col - 1], bot[col], bot[col + 1]} }};
+    bank_vec_t load_vec(size_t row_i) {
+        return (!dirty_list_[row_i]) ? zero_row_ : bram_banks_[row_i % n_banks][row_i / n_banks];
     }
 
     void print() {
@@ -59,9 +48,6 @@ class Mem {
     }
 
  private: 
-    using bank_vec_t = std::array<bool, MAX_COLS + 2>;
-    
-    const bank_vec_t zero_row_{};
     // looks much worse than it is. index by bram[bank][row][col]
     std::array<std::array<std::array<bool, MAX_COLS + 2>, (MAX_ROWS + n_banks - 1) / n_banks>, n_banks> bram_banks_;
     std::array<bool, MAX_ROWS> dirty_list_{};
@@ -76,10 +62,11 @@ class FreeMachine{
         changed_ = false;
         for (size_t row_i = 0; row_i < MAX_ROWS; row_i++) {
             for (size_t col_i = 0; col_i < MAX_COLS; col_i++) {
-                Mem::tile_map map = mem_inst_.load_mem(row_i, col_i);
+                Mem::tile_map map = load_tile(row_i, col_i);
                 uint32_t degree =  map[0][0] + map[0][1] + map[0][2]
                             + map[1][0] +             map[1][2]
                             + map[2][0] + map[2][1] + map[2][2];
+                
                 if (map[1][1] && degree < 4) {
                     updates_++;
                     mem_inst_.store_mem(row_i, col_i, 0);
@@ -92,6 +79,18 @@ class FreeMachine{
     FreeMachine(size_t start_row, size_t end_row, Mem& mem) 
         : start_row_(start_row), end_row_(end_row), mem_inst_(mem) {}
  private:
+    Mem::tile_map load_tile(size_t row_i, size_t col) {
+        // parallel bank accesses
+        const Mem::bank_vec_t& top = (row_i == 0) ? Mem::zero_row_ : mem_inst_.load_vec(row_i - 1);
+        const Mem::bank_vec_t& mid = mem_inst_.load_vec(row_i);
+        const Mem::bank_vec_t& bot = (row_i == MAX_ROWS - 1) ? Mem::zero_row_ : mem_inst_.load_vec(row_i + 1);
+
+        col++;
+        return {{ {top[col - 1], top[col], top[col + 1]}, 
+                 {mid[col - 1], mid[col], mid[col + 1]}, 
+                 {bot[col - 1], bot[col], bot[col + 1]} }};
+    }
+
     Mem& mem_inst_;
     const size_t start_row_;
     const size_t end_row_;
