@@ -132,16 +132,21 @@ int main() {
         regs_in[0].clear();
         regs_in[1].clear();
 
-        for (int j = mem_i; j < mem_i + REGS_SIZE; j++)
+        // exploit banks to load two values at a time
+        for (int j = mem_i; j < mem_i + REGS_SIZE; j = j + 2) {
             regs_in[0].push_back(mem_inst.load_mem(j));
-        for (int j = mem_i + REGS_SIZE; j < mem_i + 2 * REGS_SIZE; j++)
-            regs_in[1].push_back(mem_inst.load_mem(j));
-
-        // do two sorts
+            regs_in[0].push_back(mem_inst.load_mem(j + 1));
+        }
         sort_inst.bitonic_sort_16(std::span<tuple_pair_t, REGS_SIZE>(regs_in[0].data(), REGS_SIZE));
+        
+        // load and push thru while other is in flight
+        for (int j = mem_i + REGS_SIZE; j < mem_i + 2 * REGS_SIZE; j = j + 2) {
+            regs_in[1].push_back(mem_inst.load_mem(j));
+            regs_in[1].push_back(mem_inst.load_mem(j + 1));
+        }
         sort_inst.bitonic_sort_16(std::span<tuple_pair_t, REGS_SIZE>(regs_in[1].data(), REGS_SIZE));
         
-        // pipelining drives this
+        // stage both of them
         regs_out[0].clear();
         regs_out[1].clear();
         for (int j = mem_i; j < mem_i + REGS_SIZE; j++) {
@@ -149,6 +154,7 @@ int main() {
             regs_out[1].push_back(regs_in[1][j]);
         }
 
+        // can try to exploit forwarding but difficult. Comparison of first 2 on each side
         int left_regs_ptr, right_regs_ptr;
         left_regs_ptr = right_regs_ptr = 0;
         while (left_regs_ptr < REGS_SIZE && right_regs_ptr < REGS_SIZE) {
