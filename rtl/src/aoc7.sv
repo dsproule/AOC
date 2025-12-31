@@ -6,9 +6,9 @@ module splitter #(
     input logic clock, reset, en,
     input logic split_in,
 
-    output logic [`LONG_DATA_WIDTH-1:0] count_out
+    output logic [`DATA_WIDTH-1:0] count_out
 );
-    logic [`LONG_DATA_WIDTH-1:0] data [LINE_LENGTH-1:0];
+    logic [`DATA_WIDTH-1:0] data [LINE_LENGTH-1:0];
 
     assign count_out   = data[0];
     assign valid_split = |count_out && split_in;

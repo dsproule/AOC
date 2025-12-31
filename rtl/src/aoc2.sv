@@ -5,7 +5,7 @@ module count_combs(
     input logic [`DATA_WIDTH-1:0] n_in,
 
     output logic count_out_valid,
-    output logic [`LONG_DATA_WIDTH-1:0] count_out
+    output logic [`DATA_WIDTH-1:0] count_out
 );
 
     logic [3:0] digs_out;
@@ -15,7 +15,7 @@ module count_combs(
         .digs_out(digs_out)
     );
 
-    logic [`LONG_DATA_WIDTH-1:0] gc_outs [10:2];
+    logic [`DATA_WIDTH-1:0] gc_outs [10:2];
     logic [10:2] gc_valid; 
 
     genvar i;
@@ -29,10 +29,10 @@ module count_combs(
         );
     end endgenerate
 
-    logic [`LONG_DATA_WIDTH-1:0] stage1 [4:0];
-    logic [`LONG_DATA_WIDTH-1:0] stage2 [2:0];
-    logic [`LONG_DATA_WIDTH-1:0] stage3 [1:0];
-    logic [`LONG_DATA_WIDTH-1:0] stage4;
+    logic [`DATA_WIDTH-1:0] stage1 [4:0];
+    logic [`DATA_WIDTH-1:0] stage2 [2:0];
+    logic [`DATA_WIDTH-1:0] stage3 [1:0];
+    logic [`DATA_WIDTH-1:0] stage4;
     
     // Stage 1: Pair up inputs (4 cycles)
     always_ff @(posedge clock) begin
@@ -96,7 +96,7 @@ module count_combs(
     assign count_out = stage4 + pref_out;
     assign count_out_valid = (stage_count >= 4);
 
-    logic [`LONG_DATA_WIDTH-1:0] pref_out;
+    logic [`DATA_WIDTH-1:0] pref_out;
     pref_lookup pref (
         .idx(digs_out - 4'(1)),
 

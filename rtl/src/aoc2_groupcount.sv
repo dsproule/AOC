@@ -8,13 +8,13 @@ module group_count #(
     input logic [3:0] n_digs_in,
 
     output logic group_count_out_valid,
-    output logic [`LONG_DATA_WIDTH-1:0] group_count_out
+    output logic [`DATA_WIDTH-1:0] group_count_out
 );
 
     localparam group_count_latency = 4;
 
     logic group_en, cur_base_valid;
-    logic [`LONG_DATA_WIDTH-1:0] base10;
+    logic [`DATA_WIDTH-1:0] base10;
     logic [`DATA_WIDTH-1:0]      block_size;
 
     assign group_en = (n_digs_in % group_count_n) == '0;
@@ -59,7 +59,7 @@ module group_count #(
     end
 
     logic [`DATA_WIDTH-1:0] S_next, N_next, M_next, S, N, M;
-    logic [`LONG_DATA_WIDTH-1:0] tmp_sum_next, tmp_sum;
+    logic [`DATA_WIDTH-1:0] tmp_sum_next, tmp_sum;
 
     always_comb begin
         S_next = lb + ub;
@@ -91,7 +91,7 @@ module group_count #(
     
     assign tmp_sum_valid = (tmp_sum_cycles == group_count_latency);
 
-    logic [`LONG_DATA_WIDTH-1:0] prim_sub_out, prim_sub_out_1, prim_sub_out_2;
+    logic [`DATA_WIDTH-1:0] prim_sub_out, prim_sub_out_1, prim_sub_out_2;
     logic prim_sub_out_valid, prim_sub_out_1_valid, prim_sub_out_2_valid;
     
     logic [1:0] r, r_next; 

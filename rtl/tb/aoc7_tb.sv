@@ -3,7 +3,7 @@ module aoc7_tb;
     localparam LINE_LENGTH = 141;
 
     logic clock, reset, split_in, en;
-    logic [`LONG_DATA_WIDTH-1:0] count_out;
+    logic [`DATA_WIDTH-1:0] count_out;
 
     splitter #(.LINE_LENGTH(LINE_LENGTH)) top (.*);
 

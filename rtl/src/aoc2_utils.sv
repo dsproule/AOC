@@ -25,7 +25,7 @@ endmodule
 module pref_lookup(
     input logic [3:0] idx,
 
-    output logic [`LONG_DATA_WIDTH-1:0] value
+    output logic [`DATA_WIDTH-1:0] value
 );
     // precomputed lookup table for 10 digits
     always_comb begin

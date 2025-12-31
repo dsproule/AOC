@@ -6,8 +6,11 @@
 
 constexpr size_t MAX_ROWS = 139;
 constexpr size_t MAX_COLS = MAX_ROWS;
+constexpr size_t DATA_WIDTH = 64;
 
-using row_vec_t = std::array<bool, MAX_COLS>;
+// row vector is ceil(MAX_COLS / 3) * 64
+// using row_vec_t = std::array<bool, ((MAX_COLS + DATA_WIDTH - 1) / DATA_WIDTH) * 3>;
+using partial_row_vec_t = std::array<bool, DATA_WIDTH>;
 
 class Mem {
  public:
@@ -16,6 +19,18 @@ class Mem {
     
     static constexpr size_t n_banks = 3;
     static constexpr bank_vec_t zero_row_{};
+
+    void store_mem(size_t row_i, size_t col_i, const partial_row_vec_t& vec) {
+        bank_vec_t bank_vec = load_vec(row_i);
+        col_i++;
+
+        dirty_list_[row_i] = true;
+        // std::cout << ((MAX_COLS + 2) / col_i) * 64 << "\n";
+        // col_i / DATA_WIDTH;
+        // std::copy(vec.begin(), vec.end(), bank_vec.begin() + (col_i / DATA_WIDTH) * DATA_WIDTH);
+
+        bram_banks_[row_i % n_banks][row_i / n_banks] = bank_vec;
+    }
 
     void store_mem(size_t row_i, size_t col_i, bool value) {
         bank_vec_t bank_vec = (!dirty_list_[row_i]) ? zero_row_ : bram_banks_[row_i % n_banks][row_i / n_banks];
@@ -49,7 +64,7 @@ class Mem {
 
  private: 
     // looks much worse than it is. index by bram[bank][row][col]
-    using bank = std::array<std::array<bool, MAX_COLS + 2>, (MAX_ROWS + n_banks - 1) / n_banks>;
+    using bank = std::array<bank_vec_t, (MAX_ROWS + n_banks - 1) / n_banks>;
 
     std::array<bank, n_banks> bram_banks_;
     std::array<bool, MAX_ROWS> dirty_list_{};
@@ -103,14 +118,17 @@ int main() {
 
     Mem mem_inst;
     // Phase 1 ---------- initialize banks
-    size_t row = 0;
-    row_vec_t vec;
+    size_t row_i = 0;
+    partial_row_vec_t vec;
     while (std::getline(file, line)) {
-        vec = row_vec_t();
-        for (size_t col = 0; col < MAX_COLS; col++) {
-            mem_inst.store_mem(row, col, (line[col] == '@'));
+        vec = partial_row_vec_t();
+        for (size_t col_i = 0; col_i < MAX_COLS; col_i++) {
+            vec[col_i % 64] = (line[col_i] == '@');
+            // if (col_i % 64 == 0 && col_i > 0)
+            //     mem_inst.store_mem(row_i, col_i, vec);
+            mem_inst.store_mem(row_i, col_i, (line[col_i] == '@'));
         }
-        row++;
+        row_i++;
     }
     // Phase 2 ------------ the sweeps
     constexpr size_t MACH_N = 4;            // segments to break down (traversals take less time for grid)
@@ -137,7 +155,7 @@ int main() {
             any_changed |= mach.changed_;
         }
     }
-    // mem_inst.print();
+    mem_inst.print();
     // std::cout << "\n";
     int all_updates = 0;
     for (FreeMachine& mach : machs) {

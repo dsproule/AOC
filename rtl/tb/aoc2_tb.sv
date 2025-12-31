@@ -2,7 +2,7 @@ module aoc2_tb;
 
     logic clock, reset, count_out_valid;
     logic [`DATA_WIDTH-1:0] n_in, digs_out, n_digs_in;
-    logic [`LONG_DATA_WIDTH-1:0] count_out;
+    logic [`DATA_WIDTH-1:0] count_out;
     longint unsigned cum_sum, tmp_sum;
 
     count_combs dut (.*);

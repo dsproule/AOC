@@ -6,14 +6,14 @@ module prim_calc(
     input logic [1:0] r,
 
     output logic prim_sub_out_valid,
-    output logic [`LONG_DATA_WIDTH-1:0] prim_sub_out
+    output logic [`DATA_WIDTH-1:0] prim_sub_out
 );
     localparam prim_latency = 4;
 
     int unsigned k, k_bound, pow_m;
     logic        prim_en, rep_base_valid;
     logic [`DATA_WIDTH-1:0]      rep_base;
-    logic [`LONG_DATA_WIDTH-1:0] base10;
+    logic [`DATA_WIDTH-1:0] base10;
 
     // enables the entire block
     assign prim_en = r < block_size_in && (r == 1 || !(block_size_in & 1'b1)) && cur_base_valid;
@@ -36,7 +36,7 @@ module prim_calc(
 
     logic [`DATA_WIDTH-1:0] lb_r_next, ub_r_next, lb_r, ub_r;
     logic [`DATA_WIDTH-1:0] S_next, N_next, BM_next, M_next, S, N, BM, M;
-    logic [`LONG_DATA_WIDTH-1:0] PS_next, PS;
+    logic [`DATA_WIDTH-1:0] PS_next, PS;
 
     always_comb begin
         lb_r_next = (r == 1) ? 1 : base10;
