@@ -6,44 +6,45 @@
 
 constexpr size_t MAX_ROWS = 139;
 constexpr size_t MAX_COLS = MAX_ROWS;
-constexpr size_t DATA_WIDTH = 64;
+constexpr size_t DATA_WIDTH = 8;
+constexpr size_t BANK_WIDTH = ((MAX_COLS + 2 + DATA_WIDTH - 1) / DATA_WIDTH) * DATA_WIDTH;
 
-// row vector is ceil(MAX_COLS / 3) * 64
-// using row_vec_t = std::array<bool, ((MAX_COLS + DATA_WIDTH - 1) / DATA_WIDTH) * 3>;
 using partial_row_vec_t = std::array<bool, DATA_WIDTH>;
 
 class Mem {
  public:
     using tile_map = std::array<std::array<bool, 3>, 3>;
-    using bank_vec_t = std::array<bool, MAX_COLS + 2>;
+    using bank_vec_t = std::array<bool, BANK_WIDTH>;
     
     static constexpr size_t n_banks = 3;
     static constexpr bank_vec_t zero_row_{};
 
     void store_mem(size_t row_i, size_t col_i, const partial_row_vec_t& vec) {
-        bank_vec_t bank_vec = load_vec(row_i);
+        bank_vec_t bank_vec = load_bank_vec(row_i);
         col_i++;
+        size_t end_bound = std::min(64ul, MAX_COLS + 2 - (col_i & ~(DATA_WIDTH - 1)) - 2);
 
         dirty_list_[row_i] = true;
-        // std::cout << ((MAX_COLS + 2) / col_i) * 64 << "\n";
-        // col_i / DATA_WIDTH;
-        // std::copy(vec.begin(), vec.end(), bank_vec.begin() + (col_i / DATA_WIDTH) * DATA_WIDTH);
+        std::copy(vec.begin(), vec.begin() + end_bound, bank_vec.begin() + (col_i & ~(DATA_WIDTH - 1)) + 1);
 
         bram_banks_[row_i % n_banks][row_i / n_banks] = bank_vec;
     }
+    
+    std::array<partial_row_vec_t, 3> parallel_load_vecs(size_t mid_row_i, size_t col_i) {
+        const Mem::bank_vec_t& top_regs = (mid_row_i == 0) ? Mem::zero_row_ : load_bank_vec(mid_row_i - 1);
+        const Mem::bank_vec_t& bot_regs = (mid_row_i == MAX_ROWS - 1) ? Mem::zero_row_ : load_bank_vec(mid_row_i + 1);
+        const Mem::bank_vec_t& mid_regs = load_bank_vec(mid_row_i);
 
-    void store_mem(size_t row_i, size_t col_i, bool value) {
-        bank_vec_t bank_vec = (!dirty_list_[row_i]) ? zero_row_ : bram_banks_[row_i % n_banks][row_i / n_banks];
-        col_i++;
         
-        dirty_list_[row_i] = true;
-        bank_vec[col_i] = value;
+        col_i++;
+        std::array<partial_row_vec_t, 3> parallel_banks;
+        for (int load_batch_i = 0; load_batch_i < DATA_WIDTH; load_batch_i++) {
+            parallel_banks[0][load_batch_i] = top_regs[(col_i & ~(DATA_WIDTH - 1)) + load_batch_i];
+            parallel_banks[1][load_batch_i] = mid_regs[(col_i & ~(DATA_WIDTH - 1)) + load_batch_i];
+            parallel_banks[2][load_batch_i] = bot_regs[(col_i & ~(DATA_WIDTH - 1)) + load_batch_i];
+        }
 
-        bram_banks_[row_i % n_banks][row_i / n_banks] = bank_vec;
-    }
-
-    bank_vec_t load_vec(size_t row_i) {
-        return (!dirty_list_[row_i]) ? zero_row_ : bram_banks_[row_i % n_banks][row_i / n_banks];
+        return parallel_banks;
     }
 
     void print() {
@@ -63,6 +64,10 @@ class Mem {
     }
 
  private: 
+    // from the bank itself
+    bank_vec_t load_bank_vec(size_t row_i) {
+        return (!dirty_list_[row_i]) ? zero_row_ : bram_banks_[row_i % n_banks][row_i / n_banks];
+    }
     // looks much worse than it is. index by bram[bank][row][col]
     using bank = std::array<bank_vec_t, (MAX_ROWS + n_banks - 1) / n_banks>;
 
@@ -83,33 +88,61 @@ class FreeMachine{
                 uint32_t degree =  map[0][0] + map[0][1] + map[0][2]
                             + map[1][0] +             map[1][2]
                             + map[2][0] + map[2][1] + map[2][2];
-                
+
                 if (map[1][1] && degree < 4) {
                     updates_++;
-                    mem_inst_.store_mem(row_i, col_i, 0);
+                    regs_[1][col_i + 1] = 0;
+                    // std::cout << "g: " << col_i << "\n";
                     changed_ = true;
                 }
             }
+            // move back to mem
+            partial_row_vec_t vec;
+            for (size_t col_i = 0; col_i < MAX_COLS; col_i++) {
+                // std::cout << regs_[1][col_i + 1];
+                if (col_i % DATA_WIDTH == 0 && col_i > 0)
+                    mem_inst_.store_mem(row_i, col_i - DATA_WIDTH, vec);
+                vec[col_i % DATA_WIDTH] = regs_[1][col_i + 1];
+            }
+            // std::cout << "\n";
+            // break;
+            mem_inst_.store_mem(row_i, (MAX_COLS / DATA_WIDTH) * DATA_WIDTH, vec);
+            regs_valid_ = false; 
+            // break;
         }
+
     }
 
     FreeMachine(size_t start_row, size_t end_row, Mem& mem) 
         : start_row_(start_row), end_row_(end_row), mem_inst_(mem) {}
  private:
     Mem::tile_map load_tile(size_t row_i, size_t col_i) { 
-        const Mem::bank_vec_t& top_regs = (row_i == 0) ? Mem::zero_row_ : mem_inst_.load_vec(row_i - 1);
-        const Mem::bank_vec_t& bot_regs = (row_i == MAX_ROWS - 1) ? Mem::zero_row_ : mem_inst_.load_vec(row_i + 1);
-        const Mem::bank_vec_t& mid_regs = mem_inst_.load_vec(row_i);
+        // parallel load of cached regs 
+        if (!regs_valid_) {
+            for (int batch_i = 0; batch_i < BANK_WIDTH; batch_i = batch_i + DATA_WIDTH) {
+                std::array<partial_row_vec_t, 3> partials = mem_inst_.parallel_load_vecs(row_i, batch_i);
+                
 
+                for (int partial_i = 0; partial_i < DATA_WIDTH; partial_i++) {
+                    regs_[0][batch_i + partial_i] = partials[0][partial_i];
+                    regs_[1][batch_i + partial_i] = partials[1][partial_i];
+                    regs_[2][batch_i + partial_i] = partials[2][partial_i];
+                }
+            }
+            regs_valid_ = true;
+        }
         col_i++;
-        return {{ {top_regs[col_i - 1], top_regs[col_i], top_regs[col_i + 1]}, 
-                 {mid_regs[col_i - 1], mid_regs[col_i], mid_regs[col_i + 1]}, 
-                 {bot_regs[col_i - 1], bot_regs[col_i], bot_regs[col_i + 1]} }};
+        return {{ {regs_[0][col_i - 1], regs_[0][col_i], regs_[0][col_i + 1]}, 
+                 {regs_[1][col_i - 1], regs_[1][col_i], regs_[1][col_i + 1]}, 
+                 {regs_[2][col_i - 1], regs_[2][col_i], regs_[2][col_i + 1]} }};
     }
 
     Mem& mem_inst_;
     const size_t start_row_;
     const size_t end_row_;
+
+    std::array<Mem::bank_vec_t, 3> regs_; 
+    bool regs_valid_ = false; 
 };
 
 int main() {
@@ -123,11 +156,12 @@ int main() {
     while (std::getline(file, line)) {
         vec = partial_row_vec_t();
         for (size_t col_i = 0; col_i < MAX_COLS; col_i++) {
-            vec[col_i % 64] = (line[col_i] == '@');
-            // if (col_i % 64 == 0 && col_i > 0)
-            //     mem_inst.store_mem(row_i, col_i, vec);
-            mem_inst.store_mem(row_i, col_i, (line[col_i] == '@'));
+            if (col_i % DATA_WIDTH == 0 && col_i > 0)
+                mem_inst.store_mem(row_i, col_i - DATA_WIDTH, vec);
+            vec[col_i % DATA_WIDTH] = (line[col_i] == '@');
         }
+
+        mem_inst.store_mem(row_i, (MAX_COLS / DATA_WIDTH) * DATA_WIDTH, vec);
         row_i++;
     }
     // Phase 2 ------------ the sweeps
@@ -144,6 +178,7 @@ int main() {
             machs.push_back(FreeMachine(mach_i * MACH_ROWS, mach_i * MACH_ROWS + MACH_ROWS, mem_inst));
     }
 
+    std::cout << "\n";
     bool any_changed = true;
     int iters = 0;
     while (any_changed) {
