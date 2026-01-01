@@ -6,7 +6,7 @@
 
 constexpr size_t MAX_ROWS = 139;
 constexpr size_t MAX_COLS = MAX_ROWS;
-constexpr size_t TX_DATA_WIDTH = 8;
+constexpr size_t TX_DATA_WIDTH = 32;
 constexpr size_t GRID_VEC_ALIGN_N = ((MAX_COLS + 2 + TX_DATA_WIDTH - 1) / TX_DATA_WIDTH) * TX_DATA_WIDTH;
 
 using partial_row_vec_t = std::array<bool, TX_DATA_WIDTH>;
@@ -73,7 +73,7 @@ class Mem {
 
 class FreeMachine{
  public:
-    bool changed_ = true;
+    bool changed_ = false;
     int updates_ = 0;
 
     void run() {
@@ -81,13 +81,15 @@ class FreeMachine{
         regs_[0] = Mem::zero_row_;
 
         for (int batch_i = 0; batch_i < GRID_VEC_ALIGN_N; batch_i = batch_i + TX_DATA_WIDTH) {
-            std::array<partial_row_vec_t, 2> partials;
-            partials[0] = mem_inst_.partial_load_vecs(0, batch_i);
-            partials[1] = mem_inst_.partial_load_vecs(1, batch_i);
+            std::array<partial_row_vec_t, 3> partials;
+            partials[0] = (start_row_ == 0) ? Mem::partial_zero_row_ : mem_inst_.partial_load_vecs(start_row_ - 1, batch_i);
+            partials[1] = mem_inst_.partial_load_vecs(start_row_, batch_i);
+            partials[2] = mem_inst_.partial_load_vecs(start_row_ + 1, batch_i);
 
             for (int partial_i = 0; partial_i < TX_DATA_WIDTH; partial_i++) {
-                regs_[1][batch_i + partial_i] = partials[0][partial_i];
-                regs_[2][batch_i + partial_i] = partials[1][partial_i];
+                regs_[0][batch_i + partial_i] = partials[0][partial_i];
+                regs_[1][batch_i + partial_i] = partials[1][partial_i];
+                regs_[2][batch_i + partial_i] = partials[2][partial_i];
             }
         }
         regs_valid_ = true;
@@ -174,7 +176,7 @@ int main() {
         row_i++;
     }
     // Phase 2 ------------ the sweeps
-    constexpr size_t MACH_N = 1;            // segments to break down (traversals take less time for grid)
+    constexpr size_t MACH_N = 8;            // segments to break down (traversals take less time for grid)
     constexpr size_t MACH_DUPL = 1;         // increases throughput (lines resolved quicker)
     constexpr size_t MACH_ROWS = MAX_ROWS / MACH_N; 
     assert (MACH_ROWS > 3 * MACH_DUPL);     // make sure we have a gap for machines in same segments
@@ -184,7 +186,7 @@ int main() {
         if (mach_i == MACH_N - 1)
             machs.push_back(FreeMachine(mach_i * MACH_ROWS, MAX_ROWS, mem_inst));
         else
-            machs.push_back(FreeMachine(mach_i * MACH_ROWS, mach_i * MACH_ROWS + MACH_ROWS, mem_inst));
+            machs.push_back(FreeMachine(mach_i * MACH_ROWS, mach_i * MACH_ROWS + MACH_ROWS + 1, mem_inst));
     }
 
     std::cout << "\n";
