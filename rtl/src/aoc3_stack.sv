@@ -10,7 +10,7 @@ module long_stack #(
     output logic [`DATA_WIDTH-1:0] data_out
 );
 
-    logic [`DATA_WIDTH-1:0] data [MAX_CAP-1:0];
+    logic [`DATA_WIDTH-1:0] data [MAX_CAP];
 
     // Signal updates ---------------    
     logic [$clog2(MAX_CAP):0] sp, next_sp;

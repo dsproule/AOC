@@ -29,9 +29,9 @@ module count_combs(
         );
     end endgenerate
 
-    logic [`DATA_WIDTH-1:0] stage1 [4:0];
-    logic [`DATA_WIDTH-1:0] stage2 [2:0];
-    logic [`DATA_WIDTH-1:0] stage3 [1:0];
+    logic [`DATA_WIDTH-1:0] stage1 [5];
+    logic [`DATA_WIDTH-1:0] stage2 [3];
+    logic [`DATA_WIDTH-1:0] stage3 [2];
     logic [`DATA_WIDTH-1:0] stage4;
     
     // Stage 1: Pair up inputs (4 cycles)

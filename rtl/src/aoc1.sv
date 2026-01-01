@@ -10,14 +10,14 @@ module lock_over_zero(
     output logic [`DATA_WIDTH-1:0] zeros
 );
 
-    localparam int LOCK_MAX   = 100;
-    localparam int LOCK_START = 50;
+    localparam int lock_max   = 100;
+    localparam int lock_start = 50;
 
     logic [`DATA_WIDTH-1:0] zeros_inc, rot_mod;
     logic [`DATA_WIDTH-1:0] cur_pos, next_pos, full_rots;
 
-    assign full_rots = (rot * 16'd655) >> 16;       //  (rot / LOCK_MAX)
-    assign rot_mod = rot - (full_rots * LOCK_MAX);  //   rot % LOCK_MAX
+    assign full_rots = (rot * 16'd655) >> 16;       //  (rot / lock_max)
+    assign rot_mod = rot - (full_rots * lock_max);  //   rot % lock_max
 
     always_comb begin
         zeros_inc = full_rots;
@@ -25,14 +25,14 @@ module lock_over_zero(
             
             if (rot_mod > cur_pos) begin
                 zeros_inc = full_rots + (cur_pos != '0);
-                next_pos = LOCK_MAX + (cur_pos - rot_mod);
+                next_pos = lock_max + (cur_pos - rot_mod);
             end else next_pos = cur_pos - rot_mod;
 
         end else begin
             
-            if (cur_pos + rot_mod > LOCK_MAX)
+            if (cur_pos + rot_mod > lock_max)
                 zeros_inc = full_rots + `DATA_WIDTH'(1);
-            next_pos = (cur_pos + rot_mod) % LOCK_MAX;
+            next_pos = (cur_pos + rot_mod) % lock_max;
 
         end
     end
@@ -40,7 +40,7 @@ module lock_over_zero(
     always_ff @(posedge clock) begin
         if (reset) begin
             zeros    <= '0;
-            cur_pos  <= LOCK_START;
+            cur_pos  <= lock_start;
         end else if (en) begin
             cur_pos <= next_pos;
             zeros   <= zeros + (next_pos == '0) + zeros_inc;
