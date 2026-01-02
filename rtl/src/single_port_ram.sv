@@ -11,7 +11,6 @@ module single_port_sync_ram #(
 
     output logic [`GRID_VEC_ALIGN_N-1:0] read_data   // Read data
 );
-
     logic [`GRID_VEC_ALIGN_N-1:0] mem [DEPTH];
     
     always_ff @(posedge clock) begin

@@ -12,7 +12,7 @@ all: $(TARGET)
 %_py: sw/%.py
 	python3 $^
 
-aoc4_mem_sv: rtl/src/single_port_ram.sv
+aoc4_sv: rtl/src/single_port_ram.sv
 aoc3_sv: rtl/src/aoc3_stack.sv
 aoc2_sv: rtl/src/aoc2_utils.sv rtl/src/aoc2_groupcount.sv rtl/src/aoc2_primcalc.sv
 

@@ -62,11 +62,11 @@ module BankController (
 
     always_ff @(posedge clock) begin
         if (reset) begin
-            bank_state <= IDLE;
+            bank_state    <= IDLE;
+            dirty_list    <= '0;
             write_pending <= 1'b0;
-            dirty_list <= '0;
             bank_vec_addr_invalid <= 1'b1;
-            prev_write <= 1'b0;
+            prev_write    <= 1'b0;
         end else begin
             bank_state      <= next_bank_state;
             write_pending   <= write_en;
@@ -81,8 +81,8 @@ module BankController (
                 
                 // forces a refetch for any read requests
                 bank_vec_addr_invalid <= 1'b1;
-                writeback_valid <= 1'b1;
-                prev_write <= 1'b1;
+                prev_write            <= 1'b1;
+                writeback_valid       <= 1'b1;
             end else if (read_en) prev_write <= 1'b0;
 
             if (next_bank_state == DATA_FETCH)
