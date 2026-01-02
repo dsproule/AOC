@@ -5,7 +5,7 @@ module aoc4_tb;
     logic [`TX_DATA_WIDTH-1:0]   partial_vec_in, partial_vec_out;
     logic [`COL_ADDR_WIDTH-1:0]  col_addr;
 
-    Bank dut (.*);
+    BankController dut (.*);
     
     initial forever #5 clock = ~clock;
 
@@ -14,17 +14,22 @@ module aoc4_tb;
         $dumpvars(0, aoc4_tb);
     end
 
-    task dump_mem;
+    task print_mem;
         for (int i = 0; i < `BANK_DEPTH; i++) begin
             $display("%0d: %0d", i, dut.bank.mem[i]);
         end
     endtask
 
-    task write_mem(input logic [`TX_DATA_WIDTH-1:0] partial_vec, input logic [`BANK_ADDR_WIDTH-1:0] row_i);
+    task write_mem(input logic [`TX_DATA_WIDTH-1:0] partial_vec, 
+                    input logic [`BANK_ADDR_WIDTH-1:0] row_i, 
+                    input logic [`COL_ADDR_WIDTH-1:0] col_i);
         @(negedge clock);
         write_en = 1'b1;
         partial_vec_in = partial_vec;
         owner_row_addr = row_i;
+        col_addr = col_i;
+        @(negedge clock);
+        write_en = 1'b0;
         repeat (4) @(negedge clock);
     endtask
     
@@ -36,6 +41,8 @@ module aoc4_tb;
         col_addr = col_i;
         @(negedge clock);
         read_en = 1'b0;
+        if (!ack) @(posedge ack);
+        // artificial stall
         repeat (4) @(negedge clock);
     endtask
 
@@ -60,6 +67,9 @@ module aoc4_tb;
         dut.dirty_list[2] = 1;
 
         @(negedge clock);
+        // test for multiple polls on same line
+        read_mem(0, 6);
+        assert (partial_vec_out == 1234);
         read_mem(0, 6);
         assert (partial_vec_out == 1234);
         read_mem(0, 34);
@@ -69,6 +79,12 @@ module aoc4_tb;
         read_mem(1, 0);
         assert (partial_vec_out == 4444);
         @(negedge clock);
+        write_mem(1234, 4, 0);
+        write_mem(1232, 4, 0);
+        assert (partial_vec_out == 1232);
+        write_mem(7777, 4, 33);
+        read_mem(4, 33);
+        assert (partial_vec_out == 7777);
 
         $finish;
     end
