@@ -14,9 +14,32 @@ module aoc4_tb;
         $dumpvars(0, aoc4_tb);
     end
 
+    task print_mem;
+        for (int i = 0; i < `BANK_DEPTH; i++) begin
+            $display("%0d: %1b", i, dut.bank.mem[i]);
+        end
+    endtask
+
+    task write_mem(input logic [`TX_DATA_WIDTH-1:0]    partial_vec, 
+                    input logic [`BANK_ADDR_WIDTH-1:0] row_i, 
+                    input logic [`COL_ADDR_WIDTH-1:0]  col_i);
+        @(negedge clock);
+        write_en = 1'b1;
+        partial_vec_in = partial_vec;
+        owner_row_addr = row_i;
+        col_addr = col_i;
+        @(negedge clock);
+        write_en = 1'b0;
+        if (!ack) @(posedge ack);
+        repeat (2) @(negedge clock);
+    endtask
+
     int fd;
     int c;
     int done;
+
+    int row_i, col_i;
+    logic [`TX_DATA_WIDTH-1:0] partial_row_vec;
 
     initial begin
         fd = $fopen("input4.txt", "r");
@@ -28,12 +51,16 @@ module aoc4_tb;
         write_en = 0;
         owner_row_addr = '0;
         partial_vec_in = '0;
-        col_addr = '0;
+        col_addr = 0;
         done     = 0;
+        row_i    = 0;
+        col_i    = 0;
+        partial_row_vec = '0;
 
         repeat (3) @(negedge clock);
         reset = 0;
 
+        // initialization of banks
         @(negedge clock);
         while (!done) begin
             c = $fgetc(fd);
@@ -41,27 +68,21 @@ module aoc4_tb;
             if (c == -1) begin
                 done = 1;
             end else if (c == 10) begin
-                // newline — do nothing
+                write_mem(partial_row_vec, row_i, (`MAX_COLS / `TX_DATA_WIDTH) * `TX_DATA_WIDTH);
+                col_i = 0;
+                row_i++;
                 
             end else begin
-                // while (std::getline(file, line)) {
-                //     vec = partial_row_vec_t();
-                //     for (size_t col_i = 0; col_i < MAX_COLS; col_i++) {
-                //         if (col_i % TX_DATA_WIDTH == 0 && col_i > 0)
-                //             mem_inst.store_mem(row_i, col_i - TX_DATA_WIDTH, vec);
-                //         vec[col_i % TX_DATA_WIDTH] = (line[col_i] == '@');
-                //     }
-
-                //     mem_inst.store_mem(row_i, (MAX_COLS / TX_DATA_WIDTH) * TX_DATA_WIDTH, vec);
-                //     row_i++;
-                // }
-                
-                // data_in = c - "0";
-                // data_in_valid = 1'b1;
+                if (col_i % `TX_DATA_WIDTH == 0 && col_i > 0) begin
+                    write_mem(partial_row_vec, row_i, col_i - `TX_DATA_WIDTH);
+                    partial_row_vec = '0;
+                end
+                partial_row_vec[col_i % `TX_DATA_WIDTH] = (c == "@");
+                col_i++;
             end
-            @(negedge clock);
         end
 
+        print_mem;
         $finish;
     end
 
