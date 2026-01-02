@@ -1,3 +1,76 @@
 module aoc4_tb;
 
+    logic clock, reset, write_en, read_en, ack, busy;
+    logic [`BANK_ADDR_WIDTH-1:0] owner_row_addr;
+    logic [`TX_DATA_WIDTH-1:0]   partial_vec_in, partial_vec_out;
+    logic [`COL_ADDR_WIDTH-1:0]  col_addr;
+
+    Bank dut (.*);
+    
+    initial forever #5 clock = ~clock;
+
+    initial begin
+        $dumpfile("aoc.vcd");
+        $dumpvars(0, aoc4_tb);
+    end
+
+    task dump_mem;
+        for (int i = 0; i < `BANK_DEPTH; i++) begin
+            $display("%0d: %0d", i, dut.bank.mem[i]);
+        end
+    endtask
+
+    task write_mem(input logic [`TX_DATA_WIDTH-1:0] partial_vec, input logic [`BANK_ADDR_WIDTH-1:0] row_i);
+        @(negedge clock);
+        write_en = 1'b1;
+        partial_vec_in = partial_vec;
+        owner_row_addr = row_i;
+        repeat (4) @(negedge clock);
+    endtask
+    
+    task read_mem(input logic [`BANK_ADDR_WIDTH-1:0] row_i, input logic [`COL_ADDR_WIDTH-1:0] col_i);
+        @(negedge clock);
+        write_en = 1'b0;
+        read_en = 1'b1;
+        owner_row_addr = row_i;
+        col_addr = col_i;
+        @(negedge clock);
+        read_en = 1'b0;
+        repeat (4) @(negedge clock);
+    endtask
+
+    initial begin
+        clock = 0;
+        reset = 1;
+        read_en = 0;
+        write_en = 0;
+        owner_row_addr = '0;
+        partial_vec_in = '0;
+        col_addr = '0;
+
+        repeat (3) @(negedge clock);
+        reset = 0;
+        // before storing was implemented, seed with state
+        dut.bank.mem[0] = (1234 << 1);
+        dut.bank.mem[0] |= (4567 << 33);
+        dut.dirty_list[0] = 1;
+        dut.bank.mem[1] = (4444 << 1);
+        dut.dirty_list[1] = 1;
+        dut.bank.mem[2] = (98765 << 1);
+        dut.dirty_list[2] = 1;
+
+        @(negedge clock);
+        read_mem(0, 6);
+        assert (partial_vec_out == 1234);
+        read_mem(0, 34);
+        assert (partial_vec_out == 4567);
+        read_mem(1, 34);
+        assert (partial_vec_out == 0);
+        read_mem(1, 0);
+        assert (partial_vec_out == 4444);
+        @(negedge clock);
+
+        $finish;
+    end
+
 endmodule
