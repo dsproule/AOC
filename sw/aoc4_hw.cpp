@@ -9,6 +9,11 @@ constexpr size_t MAX_COLS = MAX_ROWS;
 constexpr size_t TX_DATA_WIDTH = 32;
 constexpr size_t GRID_VEC_ALIGN_N = ((MAX_COLS + 2 + TX_DATA_WIDTH - 1) / TX_DATA_WIDTH) * TX_DATA_WIDTH;
 
+constexpr size_t MACH_N = 4;                    // segments to break down (traversals take less time for grid)
+constexpr size_t MACH_ROWS = MAX_ROWS / MACH_N; 
+
+#define base2(n) (n != 0 && (n & (n - 1)) == 0)
+
 using partial_row_vec_t = std::array<bool, TX_DATA_WIDTH>;
 
 class Mem {
@@ -16,7 +21,7 @@ class Mem {
     using tile_map = std::array<std::array<bool, 3>, 3>;
     using bank_vec_t = std::array<bool, GRID_VEC_ALIGN_N>;
     
-    static constexpr size_t n_banks = 3;
+    static constexpr size_t n_banks = MACH_N;
     static constexpr bank_vec_t zero_row_{};
     static constexpr partial_row_vec_t partial_zero_row_{};
 
@@ -28,7 +33,7 @@ class Mem {
         dirty_list_[row_i] = true;
         std::copy(vec.begin(), vec.begin() + end_bound, bank_vec.begin() + (col_i & ~(TX_DATA_WIDTH - 1)) + 1);
 
-        bram_banks_[row_i % n_banks][row_i / n_banks] = bank_vec;
+        bram_banks_[row_i & (n_banks - 1)][row_i / n_banks] = bank_vec;
     }
     
     partial_row_vec_t partial_load_vecs(size_t mid_row_i, size_t col_i) {
@@ -48,7 +53,7 @@ class Mem {
         std::cout << "\n";
         for (size_t row_i = 0; row_i < MAX_ROWS; row_i++) {
             for (size_t col_i = 0; col_i < MAX_COLS + 2; col_i++) { 
-                std::cout << bram_banks_[row_i % n_banks][row_i / n_banks][col_i];
+                std::cout << bram_banks_[row_i & (n_banks - 1)][row_i / n_banks][col_i];
             }
             std::cout << ": " << dirty_list_[row_i];
             std::cout << "\n";
@@ -61,7 +66,7 @@ class Mem {
  private: 
     // from the bank itself
     bank_vec_t load_bank_vec(size_t row_i) {
-        return (!dirty_list_[row_i]) ? zero_row_ : bram_banks_[row_i % n_banks][row_i / n_banks];
+        return (!dirty_list_[row_i]) ? zero_row_ : bram_banks_[row_i & (n_banks - 1)][row_i / n_banks];
     }
     // looks much worse than it is. index by bram[bank][row][col]
     static constexpr size_t bank_depth = (MAX_ROWS + n_banks - 1) / n_banks;
@@ -104,23 +109,18 @@ class FreeMachine{
                 if (map[1][1] && degree < 4) {
                     updates_++;
                     regs_[1][col_i + 1] = 0;
-                    // std::cout << "g: " << col_i << "\n";
                     changed_ = true;
                 }
             }
             // move back to mem
             partial_row_vec_t vec;
             for (size_t col_i = 0; col_i < MAX_COLS; col_i++) {
-                // std::cout << regs_[1][col_i + 1];
                 if (col_i % TX_DATA_WIDTH == 0 && col_i > 0)
                     mem_inst_.store_mem(row_i, col_i - TX_DATA_WIDTH, vec);
                 vec[col_i % TX_DATA_WIDTH] = regs_[1][col_i + 1];
             }
-            // std::cout << "\n";
-            // break;
             mem_inst_.store_mem(row_i, (MAX_COLS / TX_DATA_WIDTH) * TX_DATA_WIDTH, vec);
             regs_valid_ = false; 
-            // break;
         }
 
     }
@@ -160,6 +160,8 @@ int main() {
     std::ifstream file("input4.txt");
     std::string line;
 
+    assert (base2(MACH_N));
+
     Mem mem_inst;
     // Phase 1 ---------- initialize banks
     size_t row_i = 0;
@@ -176,10 +178,6 @@ int main() {
         row_i++;
     }
     // Phase 2 ------------ the sweeps
-    constexpr size_t MACH_N = 8;            // segments to break down (traversals take less time for grid)
-    constexpr size_t MACH_DUPL = 1;         // increases throughput (lines resolved quicker)
-    constexpr size_t MACH_ROWS = MAX_ROWS / MACH_N; 
-    assert (MACH_ROWS > 3 * MACH_DUPL);     // make sure we have a gap for machines in same segments
     std::vector<FreeMachine> machs;
 
     for (size_t mach_i = 0; mach_i < MACH_N; mach_i++) {
@@ -196,18 +194,14 @@ int main() {
         iters++;
         any_changed = false;
         for (FreeMachine& mach : machs) {
-            for (int dupl = 0; dupl < MACH_DUPL; dupl++)
-                mach.run();
+            mach.run();
             any_changed |= mach.changed_;
         }
     }
     mem_inst.print();
-    // std::cout << "\n";
     int all_updates = 0;
-    for (FreeMachine& mach : machs) {
-        // std::cout << "(Mach): " << mach.updates_ << "\n";
+    for (FreeMachine& mach : machs)
         all_updates += mach.updates_;
-    }
 
     // std::cout << "Took " << iters << " iters\n";
     std::cout << "Answer is: " << all_updates << "\n";
