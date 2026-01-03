@@ -127,6 +127,7 @@ module aoc4_tb;
         run = 0;
 
         @(negedge mach.regs_valid);
+        repeat (1000) @(negedge clock);
         $display();
         print_regs;
         $finish;

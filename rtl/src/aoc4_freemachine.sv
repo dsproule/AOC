@@ -14,7 +14,6 @@ module freemachine #(
 
     logic regs_valid;
     logic [`GRID_VEC_ALIGN_N-1:0] regs [3];
-    logic [`GRID_VEC_ALIGN_N-1:0] next_regs_1;
     
     logic [`GRID_VEC_ALIGN_N-1:0] regs_dbg_0;
     logic [`GRID_VEC_ALIGN_N-1:0] regs_dbg_1;
@@ -25,13 +24,29 @@ module freemachine #(
 
     logic prune;
     logic [3:0] degree;
-    assign degree = regs[0][0] + regs[0][1] + regs[0][2]
-                    + regs[1][0] +             regs[1][2]
-                    + regs[2][0] + regs[2][1] + regs[2][2];
-    assign prune = (regs[1][1] && degree < 4);
+    logic [`GRID_VEC_ALIGN_N-1:0] next_regs_1, next_regs_2, next_regs_0;
+
+    always_comb begin
+        degree = regs[0][0] + regs[0][1] + regs[0][2]
+                        + regs[1][0] +             regs[1][2]
+                        + regs[2][0] + regs[2][1] + regs[2][2];
+        
+        prune = (regs[1][1] && degree < 4);
+
+        next_regs_0 = {regs_dbg_0[0], regs_dbg_0[`GRID_VEC_ALIGN_N-1:1]};
+        next_regs_1 = {regs[1][0], regs[1][`GRID_VEC_ALIGN_N-1:1]};
+        next_regs_2 = {regs[2][0], regs[2][`GRID_VEC_ALIGN_N-1:1]};
+        
+        if (prune) next_regs_1[0] = 1'b0;
+
+        // if (col_i == `GRID_VEC_ALIGN_N - 1) begin
+        //     next_regs_0 = next_regs_1;
+        //     next_regs_1 = next_regs_2;
+        // end
+    end
 
     logic [1:0] insert_reg;
-    int col_i, updates;
+    int col_i, row_i, updates;
     // reg loading handler. (timing of counters)
     always_ff @(posedge clock) begin
         if (reset) begin
@@ -63,35 +78,37 @@ module freemachine #(
             // save chunks until end of line. latency-insensitive design,
             // helps contention of mem if each can be stalled
             
-            if (col_addr_out + `TX_DATA_WIDTH < `GRID_VEC_ALIGN_N) 
+            // if (row_addr_out == `BANK_DEPTH) begin
+            //     regs[2] <= -1;
+            //     regs_valid <= 1'b1;
+            //     col_i      <= '0;
+            // end else 
+            if (col_addr_out + `TX_DATA_WIDTH < `GRID_VEC_ALIGN_N) begin
                 col_addr_out <= col_addr_out + `TX_DATA_WIDTH;
-            else if (insert_reg != 2) begin
+            end else if (insert_reg != 2) begin
                 row_addr_out <= row_addr_out + 1;
                 insert_reg   <= insert_reg + 1;
                 col_addr_out <= '0;
             end else begin
                 regs_valid <= 1'b1;
                 col_i      <= '0;
+                read_en_out <= 1'b0;
             end
 
             regs[insert_reg][`VEC_OFFSET(col_addr_out) +: `TX_DATA_WIDTH] <= partial_vec_in;
-        end else if (regs_valid) begin
+        end else if (regs_valid && !done_out) begin
             // driver of the cycle
-            regs[0] <= {regs[0][0], regs[0][`GRID_VEC_ALIGN_N-1:1]};
-            regs[2] <= {regs[2][0], regs[2][`GRID_VEC_ALIGN_N-1:1]};
-            
-            regs[1] <= {regs[1][0], regs[1][`GRID_VEC_ALIGN_N-1:1]}; 
-            if (prune) begin
-                regs[1][0] <= 1'b0;
-                updates <= updates + 1;
-            end
+            regs[0] <= next_regs_0;
+            regs[1] <= next_regs_1;
+            regs[2] <= next_regs_2;
+            if (prune) updates <= updates + 1;
             
             if (col_i == `GRID_VEC_ALIGN_N - 1) begin
+                // done_out <= row_addr_out;
+                read_en_out <= 1'b1;
                 col_i <= '0;
-                // regs[0] <= regs[1];
-                // regs[1] <= regs[2];
-                // insert_reg   <= 2;
-                // row_addr_out <= row_addr_out + 1;
+
+                row_addr_out <= row_addr_out + 1;
 
                 // load in new line
                 regs_valid <= 1'b0;
