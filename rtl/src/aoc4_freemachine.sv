@@ -39,10 +39,11 @@ module freemachine #(
         
         if (prune) next_regs_1[0] = 1'b0;
 
-        // if (col_i == `GRID_VEC_ALIGN_N - 1) begin
-        //     next_regs_0 = next_regs_1;
-        //     next_regs_1 = next_regs_2;
-        // end
+        if (col_i == `GRID_VEC_ALIGN_N - 1) begin
+            next_regs_0 = next_regs_1;
+            next_regs_1 = next_regs_2;
+            next_regs_2 = -1;
+        end
     end
 
     logic [1:0] insert_reg;
@@ -107,6 +108,7 @@ module freemachine #(
                 // done_out <= row_addr_out;
                 read_en_out <= 1'b1;
                 col_i <= '0;
+                col_addr_out <= '0;
 
                 row_addr_out <= row_addr_out + 1;
 
