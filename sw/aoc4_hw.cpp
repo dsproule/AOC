@@ -40,11 +40,11 @@ class Mem {
         const Mem::bank_vec_t& regs = load_bank_vec(mid_row_i);
         
         col_i++;
-        partial_row_vec_t parallel_bank;
+        partial_row_vec_t partial_vec;
         for (int load_batch_i = 0; load_batch_i < TX_DATA_WIDTH; load_batch_i++)
-            parallel_bank[load_batch_i] = regs[(col_i & ~(TX_DATA_WIDTH - 1)) + load_batch_i];
+            partial_vec[load_batch_i] = regs[(col_i & ~(TX_DATA_WIDTH - 1)) + load_batch_i];
 
-        return parallel_bank;
+        return partial_vec;
     }
 
     void print() {
