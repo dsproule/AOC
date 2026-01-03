@@ -5,7 +5,7 @@
 `define MAX_COLS `MAX_ROWS
 
 `define MACH_N 1
-`define BANK_DEPTH ((`MAX_ROWS + `MACH_N - 1) / `MACH_N)
+`define BANK_DEPTH `MAX_ROWS
 `define BANK_ADDR_WIDTH $clog2(`BANK_DEPTH)
 
 `define GRID_VEC_ALIGN_N (((`MAX_COLS + 2 + `TX_DATA_WIDTH - 1) / `TX_DATA_WIDTH) * `TX_DATA_WIDTH)

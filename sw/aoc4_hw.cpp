@@ -82,8 +82,6 @@ class FreeMachine{
     int updates_ = 0;
 
     void run() {
-        changed_ = false;
-        regs_[0] = Mem::zero_row_;
 
         for (int batch_i = 0; batch_i < GRID_VEC_ALIGN_N; batch_i = batch_i + TX_DATA_WIDTH) {
             std::array<partial_row_vec_t, 3> partials;
@@ -99,6 +97,7 @@ class FreeMachine{
         }
         regs_valid_ = true;
 
+        changed_ = false;
         for (size_t row_i = start_row_; row_i < end_row_; row_i++) {
             for (size_t col_i = 0; col_i < MAX_COLS; col_i++) {
                 Mem::tile_map map = load_tile(row_i, col_i);
