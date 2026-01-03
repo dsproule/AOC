@@ -47,6 +47,7 @@ module aoc4_tb;
         for (int i = 0; i < `BANK_DEPTH; i++) begin
             $display("%0d: %1b", i, main_mem.data.mem[i]);
         end
+        $display("Updates: %0d", mach.updates);
     endtask
     
     task print_regs;
@@ -128,14 +129,20 @@ module aoc4_tb;
         @(negedge clock);
         run = 0;
 
-        @(negedge mach.regs_valid);
-        repeat (4) begin 
-            @(negedge mach_read_en);
-            @(negedge clock);
+        @(posedge mach.regs_valid);
+        print_regs; 
+        $display();
+        while (!done_out) begin 
+            @(negedge mach.regs_valid);
+            @(posedge mach.regs_valid);
             print_regs; 
             $display();
         end
-        // @(negedge mach_read_en);
+        // repeat (4) @(negedge clock);
+        // run = 1;
+        // @(negedge clock);
+        // run = 0;
+        // @(posedge done_out);
         // repeat (1000) @(negedge clock);
 
         print_mem;

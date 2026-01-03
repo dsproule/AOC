@@ -4,12 +4,12 @@
 #include <array>
 #include <cassert>
 
-constexpr size_t MAX_ROWS = 139;
+constexpr size_t MAX_ROWS = 10;
 constexpr size_t MAX_COLS = MAX_ROWS;
-constexpr size_t TX_DATA_WIDTH = 32;
+constexpr size_t TX_DATA_WIDTH = 4;
 constexpr size_t GRID_VEC_ALIGN_N = ((MAX_COLS + 2 + TX_DATA_WIDTH - 1) / TX_DATA_WIDTH) * TX_DATA_WIDTH;
 
-constexpr size_t MACH_N = 4;                    // segments to break down (traversals take less time for grid)
+constexpr size_t MACH_N = 1;                    // segments to break down (traversals take less time for grid)
 constexpr size_t MACH_ROWS = MAX_ROWS / MACH_N; 
 
 #define base2(n) (n != 0 && (n & (n - 1)) == 0)
@@ -196,6 +196,7 @@ int main() {
             mach.run();
             any_changed |= mach.changed_;
         }
+        break;
     }
     mem_inst.print();
     int all_updates = 0;

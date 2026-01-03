@@ -97,7 +97,10 @@ module freemachine #(
             
             read_en_buf  <= 1'b0;
         end else if (write_en_out) begin
-            if (ack_in) store_parity[1] <= ~store_parity[1];
+            if (ack_in) begin
+                store_parity[1] <= ~store_parity[1];
+                col_addr_out <= col_i;
+            end
             // used to block execution of system
         end else if (run) begin
             // place initial values and set the machine to go. Initializer 
@@ -105,6 +108,7 @@ module freemachine #(
             col_addr_out <=  '0;
             read_en_buf  <= 1'b1;
             store_parity <=  '0;
+            done_out     <=  '0;
 
             if (start_row == 0) begin
                 row_addr_out_buf <= start_row;
