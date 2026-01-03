@@ -12,6 +12,8 @@ module freemachine #(
     output logic [`TX_DATA_WIDTH]       partial_vec_out
 );
 
+    localparam log2_mod = $clog2(`TX_DATA_WIDTH);
+
     logic regs_valid;
     logic [`GRID_VEC_ALIGN_N-1:0] regs [3];
     
@@ -22,10 +24,13 @@ module freemachine #(
     assign regs_dbg_1 = regs[1];
     assign regs_dbg_2 = regs[2];
 
-    logic prune;
+    logic prune, last_row;
     logic [3:0] degree;
     logic [`GRID_VEC_ALIGN_N-1:0] next_regs_1, next_regs_2, next_regs_0;
 
+    assign last_row = (row_addr_out == `MAX_ROWS);
+
+    // accumulation 
     always_comb begin
         degree = regs[0][0] + regs[0][1] + regs[0][2]
                         + regs[1][0] +             regs[1][2]
@@ -33,7 +38,7 @@ module freemachine #(
         
         prune = (regs[1][1] && degree < 4);
 
-        next_regs_0 = {regs_dbg_0[0], regs_dbg_0[`GRID_VEC_ALIGN_N-1:1]};
+        next_regs_0 = {regs[0][0], regs[0][`GRID_VEC_ALIGN_N-1:1]};
         next_regs_1 = {regs[1][0], regs[1][`GRID_VEC_ALIGN_N-1:1]};
         next_regs_2 = {regs[2][0], regs[2][`GRID_VEC_ALIGN_N-1:1]};
         
@@ -46,8 +51,12 @@ module freemachine #(
         end
     end
 
-    logic [1:0] insert_reg;
+    logic store_pending, read_en_buf;
+    logic [1:0] insert_reg, store_parity;
     int col_i, row_i, updates;
+
+    assign read_en_out = (write_en_out) ? 1'b0 : read_en_buf;
+
     // reg loading handler. (timing of counters)
     always_ff @(posedge clock) begin
         if (reset) begin
@@ -59,14 +68,15 @@ module freemachine #(
             regs_valid <= 1'b0;
             updates    <= '0;
             
-            read_en_out  <= 1'b0;
-            write_en_out <= 1'b0;
+            read_en_buf  <= 1'b0;
+            // write_en_out <= 1'b0;
         end else if (run) begin
             // place initial values and set the machine to go. Initializer 
             // of machine in a block.
             col_addr_out <= '0;
-            read_en_out  <= 1'b1;
-            write_en_out <= 1'b0;
+            read_en_buf  <= 1'b1;
+            // write_en_out <= 1'b0;
+            store_parity <= 2'b0;
             regs_valid   <= 1'b0;
 
             if (start_row == 0) begin
@@ -81,34 +91,32 @@ module freemachine #(
             
             regs[insert_reg][`VEC_OFFSET(col_addr_out) +: `TX_DATA_WIDTH] <= partial_vec_in;
 
-            if (row_addr_out == `MAX_ROWS) begin
-                regs[2] <= '0;
-                regs_valid <= 1'b1;
-                col_i      <= '0;
-            end else 
-            if (col_addr_out + `TX_DATA_WIDTH < `GRID_VEC_ALIGN_N) begin
+            if (col_addr_out + `TX_DATA_WIDTH < `GRID_VEC_ALIGN_N && !last_row) begin
                 col_addr_out <= col_addr_out + `TX_DATA_WIDTH;
-            end else if (insert_reg != 2) begin
+            end else if (insert_reg != 2 && !last_row) begin
                 row_addr_out <= row_addr_out + 1;
                 insert_reg   <= insert_reg + 1;
                 col_addr_out <= '0;
             end else begin
-                regs_valid <= 1'b1;
-                col_i      <= '0;
-                read_en_out <= 1'b0;
+                regs_valid  <= 1'b1;
+                col_i       <= '0;
+                read_en_buf <= 1'b0;
+                
+                if (last_row) regs[2] <= '0;
             end
 
-        end else if (regs_valid && !done_out) begin
+        end else if (regs_valid && !done_out && !write_en_out) begin
             // driver of the cycle
             regs[0] <= next_regs_0;
             regs[1] <= next_regs_1;
             regs[2] <= next_regs_2;
             if (prune) updates <= updates + 1;
+            if (col_i[log2_mod-1:0] == log2_mod'(-1)) store_parity[0] <= ~store_parity[0];
             
             if (col_i == `GRID_VEC_ALIGN_N - 1) begin
-                if (row_addr_out == `MAX_ROWS)
+                if (last_row)
                     done_out <= 1'b1;
-                read_en_out <= 1'b1;
+                read_en_buf <= 1'b1;
                 col_i <= '0;
                 col_addr_out <= '0;
 
@@ -119,5 +127,8 @@ module freemachine #(
             end else col_i <= col_i + 1;
         end
     end
+    
+    assign write_en_out = 0;
+    assign partial_vec_out = regs[1][`GRID_VEC_ALIGN_N - 1 -: `TX_DATA_WIDTH];
     
 endmodule

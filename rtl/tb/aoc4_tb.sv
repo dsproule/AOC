@@ -19,13 +19,13 @@ module aoc4_tb;
         .partial_vec_out(bank_partial_vec_out)
     );
 
-    logic run;
+    logic run, done_out;
     freemachine #(.start_row(0), .end_row(`BANK_DEPTH) ) mach (
         .clock(clock), .reset(reset),
         .partial_vec_in(bank_partial_vec_out),
         .run(run), .ack_in(ack && done),
 
-        .changed_out(), .done_out(), .write_en_out(mach_write_en), .read_en_out(mach_read_en),
+        .changed_out(), .done_out(done_out), .write_en_out(mach_write_en), .read_en_out(mach_read_en),
         .row_addr_out(mach_row_addr_out), .col_addr_out(mach_col_addr_out),
         .partial_vec_out(mach_partial_vec_out)
     );
@@ -127,7 +127,7 @@ module aoc4_tb;
         run = 0;
 
         @(negedge mach.regs_valid);
-        repeat (1000) @(negedge clock);
+        // repeat (100) @(negedge clock);
         $display();
         print_regs;
         $finish;
