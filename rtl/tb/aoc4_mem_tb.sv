@@ -67,17 +67,20 @@ module aoc4_tb;
 
         @(negedge clock);
         // test for multiple polls on same line
-        write_mem(134, 0, 0);
+        write_mem(14, 0, 0);
         read_mem(0, 0);
-        assert (partial_vec_out == (134));
-        read_mem(0, 6);
-        assert (partial_vec_out == (134));
+        assert (partial_vec_out == (14));
+        read_mem(0, 2);
+        assert (partial_vec_out == (14));
         read_mem(1, 6);
         @(negedge clock);
         assert (partial_vec_out == '0);
-        write_mem(177, 4, 33);
+        write_mem(7, 4, 33);
         read_mem(4, 33);
-        assert (partial_vec_out == 177);
+        assert (partial_vec_out == 7);
+        write_mem(7, 4, 0);
+        read_mem(4, 0);
+        assert (partial_vec_out == 7);
 
         $finish;
     end

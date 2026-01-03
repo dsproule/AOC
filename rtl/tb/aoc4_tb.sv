@@ -1,3 +1,5 @@
+`include "common.svh"
+
 module aoc4_tb;
 
     logic clock, reset;
@@ -6,7 +8,7 @@ module aoc4_tb;
     logic [`TX_DATA_WIDTH-1:0]   partial_vec_in, tb_partial_vec_in, bank_partial_vec_out, mach_partial_vec_out;
     logic [`COL_ADDR_WIDTH-1:0]  col_addr_in, tb_col_addr_in, mach_col_addr_out;
 
-    mem dut (
+    mem main_mem (
         .clock(clock), .reset(reset),
         .write_en(write_en), .read_en(read_en),
         .row_addr_in(row_addr_in),
@@ -42,22 +44,22 @@ module aoc4_tb;
 
     task print_mem;
         for (int i = 0; i < `BANK_DEPTH; i++) begin
-            $display("%0d: %1b", i, dut.data.mem[i]);
+            // $display("%0d: %1b", i, dut.data.mem[i]);
         end
     endtask
 
-    task write_mem(input logic [`TX_DATA_WIDTH-1:0]    partial_vec, 
+    task write_mem(input logic [`TX_DATA_WIDTH-1:0] partial_vec, 
                     input logic [`BANK_ADDR_WIDTH-1:0] row_i, 
-                    input logic [`COL_ADDR_WIDTH-1:0]  col_i);
+                    input logic [`COL_ADDR_WIDTH-1:0] col_i);
         @(negedge clock);
         write_en = 1'b1;
+        read_en = 1'b0;
         tb_partial_vec_in = partial_vec;
         tb_row_addr_in = row_i;
         tb_col_addr_in = col_i;
+        if (!ack) @(posedge ack);
         @(negedge clock);
-        @(posedge ack);
         write_en = 1'b0;
-        repeat (2) @(negedge clock);
     endtask
 
     int fd;
@@ -94,9 +96,9 @@ module aoc4_tb;
             if (c == -1) begin
                 done = 1;
             end else if (c == 10) begin
-                write_mem(partial_row_vec, row_i, (`MAX_COLS / `TX_DATA_WIDTH) * `TX_DATA_WIDTH);
-                col_i = 0;
-                row_i++;
+                // write_mem(partial_row_vec, row_i, (`MAX_COLS / `TX_DATA_WIDTH) * `TX_DATA_WIDTH);
+                // col_i = 0;
+                // row_i++;
                 
             end else begin
                 if (col_i % `TX_DATA_WIDTH == 0 && col_i > 0) begin

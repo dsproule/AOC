@@ -10,6 +10,6 @@
 
 `define GRID_VEC_ALIGN_N (((`MAX_COLS + 2 + `TX_DATA_WIDTH - 1) / `TX_DATA_WIDTH) * `TX_DATA_WIDTH)
 `define COL_ADDR_WIDTH $clog2(`GRID_VEC_ALIGN_N)
-`define TX_DATA_WIDTH 8
+`define TX_DATA_WIDTH 4
 
 `endif

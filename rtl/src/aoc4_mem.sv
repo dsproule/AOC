@@ -40,13 +40,15 @@ module mem (
     typedef enum logic [1:0] {IDLE, FETCH_SAVE, WRITEBACK} bank_fetch_t;
     bank_fetch_t fetch_state, next_fetch_state;
 
-    // easier for timing synchronization
+    // easier for timing synchronization. Also simulator disallows ternary assignments with types
     always_comb begin
         next_fetch_state = fetch_state;
 
         case (fetch_state)
-            IDLE: if (fetch_en) next_fetch_state = FETCH_SAVE;
-            FETCH_SAVE: if (write_en) next_fetch_state = WRITEBACK; else next_fetch_state = IDLE;
+            IDLE: if (fetch_en) next_fetch_state = FETCH_SAVE; 
+                  else if (addr_saved && write_en) next_fetch_state = WRITEBACK;
+            FETCH_SAVE: if (write_en) next_fetch_state = WRITEBACK; 
+                        else next_fetch_state = IDLE;
             WRITEBACK: next_fetch_state = IDLE;
         endcase
     end
