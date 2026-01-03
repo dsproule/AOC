@@ -19,16 +19,13 @@ module aoc4_tb;
     logic [`TX_DATA_WIDTH-1:0] mach_partial_vec_out [`MACH_N-1:0];
 
     mem main_mem (
-        .clock(clock), 
-        .reset(reset),
-        .write_en(write_en), 
-        .read_en(read_en), 
-        .pad_en(pad_en),
+        .clock(clock), .reset(reset),
+        .write_en(write_en), .read_en(read_en), .pad_en(pad_en),
         .row_addr_in(row_addr_in),
         .partial_vec_in(partial_vec_in),
         .col_addr_in(col_addr_in),
-        .ack(ack), 
-        .busy(busy),
+        
+        .ack(ack), .busy(busy),
         .partial_vec_out(bank_partial_vec_out)
     );
 
@@ -44,6 +41,7 @@ module aoc4_tb;
                 .clock(clock), .reset(reset),
                 .partial_vec_in(bank_partial_vec_out),
                 .run(run), .ack_in(ack && done),
+
                 .changed_out(mach_changed_out[mach_i]), .done_out(mach_done_out[mach_i]),  
                 .write_en_out(mach_write_en[mach_i]), .read_en_out(mach_read_en[mach_i]),
                 .row_addr_out(mach_row_addr_out[mach_i]), .col_addr_out(mach_col_addr_out[mach_i]),
