@@ -4,7 +4,7 @@ module aoc4_tb;
 
     logic clock, reset;
     logic [`BANK_ADDR_WIDTH-1:0] row_addr_in, tb_row_addr_in, mach_row_addr_out;
-    logic tb_write_en, tb_read_en, mach_write_en, mach_read_en, ack, busy, pad_en;
+    logic tb_write_en, tb_read_en, mach_write_en, mach_read_en, ack, busy, pad_en, mach_changed_out;
     logic [`TX_DATA_WIDTH-1:0]   partial_vec_in, tb_partial_vec_in, bank_partial_vec_out, mach_partial_vec_out;
     logic [`COL_ADDR_WIDTH-1:0]  col_addr_in, tb_col_addr_in, mach_col_addr_out;
 
@@ -25,7 +25,7 @@ module aoc4_tb;
         .partial_vec_in(bank_partial_vec_out),
         .run(run), .ack_in(ack && done),
 
-        .changed_out(), .done_out(done_out), .write_en_out(mach_write_en), .read_en_out(mach_read_en),
+        .changed_out(mach_changed_out), .done_out(done_out), .write_en_out(mach_write_en), .read_en_out(mach_read_en),
         .row_addr_out(mach_row_addr_out), .col_addr_out(mach_col_addr_out),
         .partial_vec_out(mach_partial_vec_out)
     );
@@ -47,7 +47,7 @@ module aoc4_tb;
         for (int i = 0; i < `BANK_DEPTH; i++) begin
             $display("%0d: %1b", i, main_mem.data.mem[i]);
         end
-        $display("Updates: %0d", mach.updates);
+        $display("Updates: %0d, Changed: %0b", mach.updates, mach_changed_out);
     endtask
     
     task print_regs;
@@ -126,26 +126,13 @@ module aoc4_tb;
         print_mem;
         $display();
 
-        // deploy the machines
-        run = 1;
-        @(negedge clock);
-        run = 0;
-
-        @(posedge mach.regs_valid);
-        print_regs; 
-        $display();
-        while (!done_out) begin 
-            @(negedge mach.regs_valid);
-            @(posedge mach.regs_valid);
-            print_regs; 
-            $display();
+        while (mach_changed_out) begin
+            run = 1;
+            @(negedge clock);
+            run = 0;
+            @(posedge done_out);
+            repeat (2) @(negedge clock);
         end
-        
-        // repeat (4) @(negedge clock); run = 1;
-        // @(negedge clock); run = 0;
-        // @(posedge done_out);
-        
-        // repeat (1000) @(negedge clock);
 
         print_mem;
         $finish;

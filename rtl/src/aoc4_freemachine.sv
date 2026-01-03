@@ -14,9 +14,11 @@ module freemachine #(
 
     localparam log2_mod = $clog2(`TX_DATA_WIDTH);
 
-    logic regs_valid;
+    logic regs_valid, done_out_buf;
     logic [`GRID_VEC_ALIGN_N-1:0] regs [3];
     logic [`BANK_ADDR_WIDTH-1:0] row_addr_out_buf;
+
+    assign done_out = done_out_buf && !write_en_out;
     
     logic [`GRID_VEC_ALIGN_N-1:0] regs_dbg_0;
     logic [`GRID_VEC_ALIGN_N-1:0] regs_dbg_1;
@@ -63,14 +65,14 @@ module freemachine #(
         if (reset) begin
             {regs[0], regs[1], regs[2]} <= '0;
             regs_valid <= 1'b0;
-        end else if (write_en_out) begin
         end else if (run) begin
-            regs_valid   <= 1'b0;
+            regs_valid <= 1'b0;
 
             if (start_row == 0) begin
                 regs[0]      <= '0;
                 insert_reg   <= 1;
             end
+        end else if (write_en_out) begin
         end else if (ack_in && !regs_valid) begin
             regs[insert_reg][`VEC_OFFSET(col_addr_out) +: `TX_DATA_WIDTH] <= partial_vec_in;
 
@@ -82,7 +84,7 @@ module freemachine #(
                     if (last_row) regs[2] <= '0;
                 end
             end 
-        end else if (regs_valid && !done_out && !write_en_out) begin
+        end else if (regs_valid && !done_out_buf && !write_en_out) begin
             {regs[0], regs[1], regs[2]} <= {next_regs_0, next_regs_1, next_regs_2};
             if (col_i == `GRID_VEC_ALIGN_N - 1) regs_valid <= 1'b0;
         end
@@ -91,29 +93,31 @@ module freemachine #(
     // memory interactions machine
     always_ff @(posedge clock) begin
         if (reset) begin
-            done_out     <= 1'b0;
+            done_out_buf     <= 1'b0;
             updates      <= '0;
             store_parity <= '0;
+            changed_out  <= 1'b1;
             
             read_en_buf  <= 1'b0;
-        end else if (write_en_out) begin
-            if (ack_in) begin
-                store_parity[1] <= ~store_parity[1];
-                col_addr_out <= col_i;
-            end
-            // used to block execution of system
         end else if (run) begin
             // place initial values and set the machine to go. Initializer 
             // of machine in a block.
             col_addr_out <=  '0;
             read_en_buf  <= 1'b1;
             store_parity <=  '0;
-            done_out     <=  '0;
+            done_out_buf <=  '0;
+            changed_out  <= 1'b0;
 
             if (start_row == 0) begin
                 row_addr_out_buf <= start_row;
             end else row_addr_out_buf <= start_row - 1;
 
+        end else if (write_en_out) begin
+            if (ack_in) begin
+                store_parity[1] <= ~store_parity[1];
+                col_addr_out <= col_i;
+            end
+            // used to block execution of system
         end else if (ack_in && !regs_valid) begin
             // save chunks until end of line. latency-insensitive design,
             // helps contention of mem if each can be stalled
@@ -127,13 +131,16 @@ module freemachine #(
                 read_en_buf <= 1'b0;
             end
 
-        end else if (regs_valid && !done_out && !write_en_out) begin
+        end else if (regs_valid && !done_out_buf && !write_en_out) begin
             // driver of the cycle
-            if (prune) updates <= updates + 1;
+            if (prune) begin
+                updates <= updates + 1;
+                changed_out <= 1'b1;
+            end
             
             if (col_i == `GRID_VEC_ALIGN_N - 1) begin
                 if (last_row)
-                    done_out <= 1'b1;
+                    done_out_buf <= 1'b1;
                 read_en_buf <= 1'b1;
                 col_i <= '0;
                 col_addr_out <= '0;
