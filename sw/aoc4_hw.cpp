@@ -95,7 +95,7 @@ class FreeMachine{
                 regs_[2][col_i + partial_i] = partials[2][partial_i];
             }
         }
-        regs_valid_ = false;
+        regs_valid_ = true;
 
         changed_ = false;
         for (size_t row_i = start_row_; row_i < end_row_; row_i++) {

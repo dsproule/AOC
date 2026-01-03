@@ -19,11 +19,11 @@ module aoc4_tb;
         .partial_vec_out(bank_partial_vec_out)
     );
 
-    logic sweep_start;
+    logic run;
     freemachine #(.start_row(0), .end_row(`BANK_DEPTH) ) mach (
         .clock(clock), .reset(reset),
         .partial_vec_in(bank_partial_vec_out),
-        .sweep_start(sweep_start), .ack_in(ack),
+        .run(run), .ack_in(ack && done),
 
         .changed_out(), .done_out(), .write_en_out(mach_write_en), .read_en_out(mach_read_en),
         .row_addr_out(mach_row_addr_out), .col_addr_out(mach_col_addr_out),
@@ -89,7 +89,7 @@ module aoc4_tb;
         row_i    = 0;
         col_i    = 0;
         partial_row_vec = '0;
-        sweep_start = 0;
+        run = 0;
         tb_read_en  = 0;
         tb_write_en = 0;
 
@@ -122,11 +122,11 @@ module aoc4_tb;
         print_mem;
 
         // deploy the machines
-        sweep_start = 1;
+        run = 1;
         @(negedge clock);
-        sweep_start = 0;
+        run = 0;
 
-        repeat (12) @(negedge clock);
+        @(negedge mach.regs_valid);
         $display();
         print_regs;
         $finish;
