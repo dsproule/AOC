@@ -3,38 +3,61 @@
 module aoc4_tb;
 
     logic clock, reset;
-    logic [`BANK_ADDR_WIDTH-1:0] row_addr_in, tb_row_addr_in, mach_row_addr_out;
-    logic tb_write_en, tb_read_en, mach_write_en, mach_read_en, ack, busy, pad_en, mach_changed_out;
-    logic [`TX_DATA_WIDTH-1:0]   partial_vec_in, tb_partial_vec_in, bank_partial_vec_out, mach_partial_vec_out;
-    logic [`COL_ADDR_WIDTH-1:0]  col_addr_in, tb_col_addr_in, mach_col_addr_out;
+    logic [`BANK_ADDR_WIDTH-1:0] row_addr_in, tb_row_addr_in;
+    logic tb_write_en, tb_read_en, ack, busy, pad_en;
+    logic [`TX_DATA_WIDTH-1:0]   partial_vec_in, tb_partial_vec_in, bank_partial_vec_out;
+    logic [`COL_ADDR_WIDTH-1:0]  col_addr_in, tb_col_addr_in;
+    logic read_en, write_en;
+
+    // Declare machine output signals as arrays
+    logic mach_changed_out [`MACH_N-1:0];
+    logic mach_done_out [`MACH_N-1:0];
+    logic mach_write_en [`MACH_N-1:0];
+    logic mach_read_en [`MACH_N-1:0];
+    logic [`BANK_ADDR_WIDTH-1:0] mach_row_addr_out [`MACH_N-1:0];
+    logic [`COL_ADDR_WIDTH-1:0] mach_col_addr_out [`MACH_N-1:0];
+    logic [`TX_DATA_WIDTH-1:0] mach_partial_vec_out [`MACH_N-1:0];
 
     mem main_mem (
-        .clock(clock), .reset(reset),
-        .write_en(write_en), .read_en(read_en), .pad_en(pad_en),
+        .clock(clock), 
+        .reset(reset),
+        .write_en(write_en), 
+        .read_en(read_en), 
+        .pad_en(pad_en),
         .row_addr_in(row_addr_in),
         .partial_vec_in(partial_vec_in),
         .col_addr_in(col_addr_in),
-    
-        .ack(ack), .busy(busy),
+        .ack(ack), 
+        .busy(busy),
         .partial_vec_out(bank_partial_vec_out)
     );
 
-    logic run, done_out;
-    freemachine #(.start_row(0), .end_row(`BANK_DEPTH) ) mach (
-        .clock(clock), .reset(reset),
-        .partial_vec_in(bank_partial_vec_out),
-        .run(run), .ack_in(ack && done),
+    logic run;
+    int done;
 
-        .changed_out(mach_changed_out), .done_out(done_out), .write_en_out(mach_write_en), .read_en_out(mach_read_en),
-        .row_addr_out(mach_row_addr_out), .col_addr_out(mach_col_addr_out),
-        .partial_vec_out(mach_partial_vec_out)
-    );
+    genvar mach_i;
+    generate 
+        for (mach_i = 0; mach_i < `MACH_N; mach_i++) begin : mach_gen
+            freemachine #(
+                .start_row(0), .end_row(`BANK_DEPTH)
+            ) mach (
+                .clock(clock), .reset(reset),
+                .partial_vec_in(bank_partial_vec_out),
+                .run(run), .ack_in(ack && done),
+                .changed_out(mach_changed_out[mach_i]), .done_out(mach_done_out[mach_i]),  
+                .write_en_out(mach_write_en[mach_i]), .read_en_out(mach_read_en[mach_i]),
+                .row_addr_out(mach_row_addr_out[mach_i]), .col_addr_out(mach_col_addr_out[mach_i]),
+                .partial_vec_out(mach_partial_vec_out[mach_i])
+            );
+        end 
+    endgenerate
 
-    assign partial_vec_in = (!done) ? tb_partial_vec_in : mach_partial_vec_out;
-    assign row_addr_in    = (!done) ? tb_row_addr_in : mach_row_addr_out;
-    assign col_addr_in    = (!done) ? tb_col_addr_in : mach_col_addr_out;
-    assign read_en        = (!done) ? tb_read_en : mach_read_en;
-    assign write_en       = (!done) ? tb_write_en : mach_write_en;
+    // MUX between testbench control and machine control
+    assign partial_vec_in = (!done) ? tb_partial_vec_in : mach_partial_vec_out[0];
+    assign row_addr_in    = (!done) ? tb_row_addr_in : mach_row_addr_out[0];
+    assign col_addr_in    = (!done) ? tb_col_addr_in : mach_col_addr_out[0];
+    assign read_en        = (!done) ? tb_read_en : mach_read_en[0];
+    assign write_en       = (!done) ? tb_write_en : mach_write_en[0];
 
     initial forever #5 clock = ~clock;
 
@@ -47,19 +70,13 @@ module aoc4_tb;
         for (int i = 0; i < `BANK_DEPTH; i++) begin
             $display("%0d: %1b", i, main_mem.data.mem[i]);
         end
-        $display("Updates: %0d, Changed: %0b", mach.updates, mach_changed_out);
-    endtask
-    
-    task print_regs;
-        $display("row_addr_out: %0d, mach_write: %0b", mach.row_addr_out_buf - 1, mach_write_en);
-        for (int i = 0; i < 3; i++) begin
-            $display("%0d: %1b", i, mach.regs[i]);
-        end
     endtask
 
-    task write_mem(input logic [`TX_DATA_WIDTH-1:0] partial_vec, 
-                    input logic [`BANK_ADDR_WIDTH-1:0] row_i, 
-                    input logic [`COL_ADDR_WIDTH-1:0] col_i);
+    task write_mem(
+        input logic [`TX_DATA_WIDTH-1:0] partial_vec, 
+        input logic [`BANK_ADDR_WIDTH-1:0] row_i, 
+        input logic [`COL_ADDR_WIDTH-1:0] col_i
+    );
         @(negedge clock);
         pad_en = 1'b1;
         tb_write_en = 1'b1;
@@ -75,8 +92,6 @@ module aoc4_tb;
 
     int fd;
     int c;
-    int done;
-
     int row_i, col_i;
     logic [`TX_DATA_WIDTH-1:0] partial_row_vec;
 
@@ -84,23 +99,24 @@ module aoc4_tb;
         fd = $fopen("input4.txt", "r");
         if (fd == 0) $fatal(1, "ERROR: Could not open input4.txt");
 
-        clock    = 0;
-        reset    = 1;
+        // Initialize signals
+        clock = 0;
+        reset = 1;
         tb_row_addr_in = '0;
         tb_partial_vec_in = '0;
         tb_col_addr_in = 0;
-        done     = 0;
-        row_i    = 0;
-        col_i    = 0;
+        done = 0;
+        row_i = 0;
+        col_i = 0;
         partial_row_vec = '0;
         run = 0;
-        tb_read_en  = 0;
+        tb_read_en = 0;
         tb_write_en = 0;
 
         repeat (3) @(negedge clock);
         reset = 0;
 
-        // initialization of banks
+        // Load memory from file
         @(negedge clock);
         while (!done) begin
             c = $fgetc(fd);
@@ -111,7 +127,6 @@ module aoc4_tb;
                 write_mem(partial_row_vec, row_i, (`MAX_COLS / `TX_DATA_WIDTH) * `TX_DATA_WIDTH);
                 col_i = 0;
                 row_i++;
-                
             end else begin
                 if (col_i % `TX_DATA_WIDTH == 0 && col_i > 0) begin
                     write_mem(partial_row_vec, row_i, col_i - `TX_DATA_WIDTH);
@@ -121,21 +136,24 @@ module aoc4_tb;
                 col_i++;
             end
         end
+        
         if (col_i != 0) write_mem(partial_row_vec, row_i, (`MAX_COLS / `TX_DATA_WIDTH) * `TX_DATA_WIDTH);
+        
         @(negedge clock);
-        // print_mem;
-        // $display();
 
-        while (mach_changed_out) begin
+        while (mach_changed_out[0]) begin
+            // Run the machine
             run = 1;
             @(negedge clock);
             run = 0;
-            @(posedge done_out);
+            @(posedge mach_done_out[0]);
             repeat (2) @(negedge clock);
         end
 
+        // Uncomment to print results
         // print_mem;
-        $display("Updates: %0d", mach.updates);
+        $display("Updates: %0d", mach_gen[0].mach.updates);
+        
         $finish;
     end
 
