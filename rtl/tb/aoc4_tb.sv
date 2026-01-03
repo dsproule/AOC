@@ -4,7 +4,7 @@ module aoc4_tb;
 
     logic clock, reset;
     logic [`BANK_ADDR_WIDTH-1:0] row_addr_in, tb_row_addr_in, mach_row_addr_out;
-    logic write_en, read_en, ack, busy;
+    logic tb_write_en, tb_read_en, mach_write_en, mach_read_en, ack, busy;
     logic [`TX_DATA_WIDTH-1:0]   partial_vec_in, tb_partial_vec_in, bank_partial_vec_out, mach_partial_vec_out;
     logic [`COL_ADDR_WIDTH-1:0]  col_addr_in, tb_col_addr_in, mach_col_addr_out;
 
@@ -19,21 +19,22 @@ module aoc4_tb;
         .partial_vec_out(bank_partial_vec_out)
     );
 
-    freemachine #(.start_row(0), .end_row(`BANK_DEPTH) ) 
-            mach (
+    logic sweep_start;
+    freemachine #(.start_row(0), .end_row(`BANK_DEPTH) ) mach (
         .clock(clock), .reset(reset),
-        .partial_vec_in(partial_vec_in),
-        .sweep_start(), .ack_in(ack),
+        .partial_vec_in(bank_partial_vec_out),
+        .sweep_start(sweep_start), .ack_in(ack),
 
-        .changed_out(), .done_out(), .write_en_out(), .read_en_out(),
-        .row_addr_out(), .col_addr_out(),
+        .changed_out(), .done_out(), .write_en_out(mach_write_en), .read_en_out(mach_read_en),
+        .row_addr_out(mach_row_addr_out), .col_addr_out(mach_col_addr_out),
         .partial_vec_out(mach_partial_vec_out)
-
     );
 
-    assign partial_vec_in = (!done) ? tb_partial_vec_in : '0;
-    assign row_addr_in    = (!done) ? tb_row_addr_in : '0;
-    assign col_addr_in    = (!done) ? tb_col_addr_in : '0;
+    assign partial_vec_in = (!done) ? tb_partial_vec_in : mach_partial_vec_out;
+    assign row_addr_in    = (!done) ? tb_row_addr_in : mach_row_addr_out;
+    assign col_addr_in    = (!done) ? tb_col_addr_in : mach_col_addr_out;
+    assign read_en        = (!done) ? tb_read_en : mach_read_en;
+    assign write_en        = (!done) ? tb_write_en : mach_write_en;
 
     initial forever #5 clock = ~clock;
 
@@ -47,19 +48,24 @@ module aoc4_tb;
             $display("%0d: %1b", i, main_mem.data.mem[i]);
         end
     endtask
+    
+    task print_regs;
+        for (int i = 0; i < 3; i++) begin
+            $display("%0d: %1b", i, mach.regs[i]);
+        end
+    endtask
 
     task write_mem(input logic [`TX_DATA_WIDTH-1:0] partial_vec, 
                     input logic [`BANK_ADDR_WIDTH-1:0] row_i, 
                     input logic [`COL_ADDR_WIDTH-1:0] col_i);
         @(negedge clock);
-        write_en = 1'b1;
-        read_en = 1'b0;
+        tb_write_en = 1'b1;
+        tb_read_en = 1'b0;
         tb_partial_vec_in = partial_vec;
         tb_row_addr_in = row_i;
         tb_col_addr_in = col_i;
         if (!ack) @(posedge ack);
-        // @(negedge clock);
-        write_en = 1'b0;
+        tb_write_en = 1'b0;
         if (busy) @(negedge ack);
     endtask
 
@@ -76,8 +82,6 @@ module aoc4_tb;
 
         clock    = 0;
         reset    = 1;
-        read_en  = 0;
-        write_en = 0;
         tb_row_addr_in = '0;
         tb_partial_vec_in = '0;
         tb_col_addr_in = 0;
@@ -85,6 +89,9 @@ module aoc4_tb;
         row_i    = 0;
         col_i    = 0;
         partial_row_vec = '0;
+        sweep_start = 0;
+        tb_read_en  = 0;
+        tb_write_en = 0;
 
         repeat (3) @(negedge clock);
         reset = 0;
@@ -114,6 +121,14 @@ module aoc4_tb;
         @(negedge clock);
         print_mem;
 
+        // deploy the machines
+        sweep_start = 1;
+        @(negedge clock);
+        sweep_start = 0;
+
+        repeat (12) @(negedge clock);
+        $display();
+        print_regs;
         $finish;
     end
 

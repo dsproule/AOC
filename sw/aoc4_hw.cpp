@@ -83,19 +83,19 @@ class FreeMachine{
 
     void run() {
 
-        for (int batch_i = 0; batch_i < GRID_VEC_ALIGN_N; batch_i = batch_i + TX_DATA_WIDTH) {
+        for (int col_i = 0; col_i < GRID_VEC_ALIGN_N; col_i = col_i + TX_DATA_WIDTH) {
             std::array<partial_row_vec_t, 3> partials;
-            partials[0] = (start_row_ == 0) ? Mem::partial_zero_row_ : mem_inst_.partial_load_vecs(start_row_ - 1, batch_i);
-            partials[1] = mem_inst_.partial_load_vecs(start_row_, batch_i);
-            partials[2] = mem_inst_.partial_load_vecs(start_row_ + 1, batch_i);
+            partials[0] = (start_row_ == 0) ? Mem::partial_zero_row_ : mem_inst_.partial_load_vecs(start_row_ - 1, col_i);
+            partials[1] = mem_inst_.partial_load_vecs(start_row_, col_i);
+            partials[2] = mem_inst_.partial_load_vecs(start_row_ + 1, col_i);
 
             for (int partial_i = 0; partial_i < TX_DATA_WIDTH; partial_i++) {
-                regs_[0][batch_i + partial_i] = partials[0][partial_i];
-                regs_[1][batch_i + partial_i] = partials[1][partial_i];
-                regs_[2][batch_i + partial_i] = partials[2][partial_i];
+                regs_[0][col_i + partial_i] = partials[0][partial_i];
+                regs_[1][col_i + partial_i] = partials[1][partial_i];
+                regs_[2][col_i + partial_i] = partials[2][partial_i];
             }
         }
-        regs_valid_ = true;
+        regs_valid_ = false;
 
         changed_ = false;
         for (size_t row_i = start_row_; row_i < end_row_; row_i++) {

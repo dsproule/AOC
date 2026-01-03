@@ -12,4 +12,7 @@
 `define COL_ADDR_WIDTH $clog2(`GRID_VEC_ALIGN_N)
 `define TX_DATA_WIDTH 4
 
+`define VEC_OFFSET(col_i) ((col_i & ~(`TX_DATA_WIDTH - 1)))
+
+
 `endif

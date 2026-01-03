@@ -13,7 +13,6 @@ module mem (
     output logic [`TX_DATA_WIDTH-1:0] partial_vec_out
 );
 
-    `define VEC_OFFSET(col_i) ((col_i & ~(`TX_DATA_WIDTH - 1)) + 1)
     logic [`BANK_DEPTH-1:0] dirty_list;
 
     logic mem_init, fetch_en, addr_saved, writeback_commit;
@@ -68,12 +67,12 @@ module mem (
                 bank_vec_stable     <= (!dirty_list[row_addr_in]) ? '0 : bank_read_data;
                 bank_vec_addr_saved <= row_addr_in;     // assumed to not change during fetch
                 if (write_en) begin
-                    bank_vec_stable[`VEC_OFFSET(col_addr_in) +: `TX_DATA_WIDTH] <= partial_vec_in;
+                    bank_vec_stable[`VEC_OFFSET(col_addr_in) + 1 +: `TX_DATA_WIDTH] <= partial_vec_in;
                     dirty_list[row_addr_in] <= 1'b1;
                 end
 
                 mem_init <= 1'b1;
-            end else if (addr_saved && write_en && fetch_state == IDLE) bank_vec_stable[`VEC_OFFSET(col_addr_in) +: `TX_DATA_WIDTH] <= partial_vec_in;
+            end else if (addr_saved && write_en && fetch_state == IDLE) bank_vec_stable[`VEC_OFFSET(col_addr_in) + 1 +: `TX_DATA_WIDTH] <= partial_vec_in;
         end
     end
     
