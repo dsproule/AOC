@@ -4,13 +4,13 @@ module aoc4_tb;
 
     logic clock, reset;
     logic [`BANK_ADDR_WIDTH-1:0] row_addr_in, tb_row_addr_in, mach_row_addr_out;
-    logic tb_write_en, tb_read_en, mach_write_en, mach_read_en, ack, busy;
+    logic tb_write_en, tb_read_en, mach_write_en, mach_read_en, ack, busy, pad_en;
     logic [`TX_DATA_WIDTH-1:0]   partial_vec_in, tb_partial_vec_in, bank_partial_vec_out, mach_partial_vec_out;
     logic [`COL_ADDR_WIDTH-1:0]  col_addr_in, tb_col_addr_in, mach_col_addr_out;
 
     mem main_mem (
         .clock(clock), .reset(reset),
-        .write_en(write_en), .read_en(read_en),
+        .write_en(write_en), .read_en(read_en), .pad_en(pad_en),
         .row_addr_in(row_addr_in),
         .partial_vec_in(partial_vec_in),
         .col_addr_in(col_addr_in),
@@ -61,6 +61,7 @@ module aoc4_tb;
                     input logic [`BANK_ADDR_WIDTH-1:0] row_i, 
                     input logic [`COL_ADDR_WIDTH-1:0] col_i);
         @(negedge clock);
+        pad_en = 1'b1;
         tb_write_en = 1'b1;
         tb_read_en = 1'b0;
         tb_partial_vec_in = partial_vec;
@@ -68,6 +69,7 @@ module aoc4_tb;
         tb_col_addr_in = col_i;
         if (!ack) @(posedge ack);
         tb_write_en = 1'b0;
+        pad_en = 1'b0;
         if (busy) @(negedge ack);
     endtask
 
@@ -138,11 +140,11 @@ module aoc4_tb;
             print_regs; 
             $display();
         end
-        // repeat (4) @(negedge clock);
-        // run = 1;
-        // @(negedge clock);
-        // run = 0;
+        
+        // repeat (4) @(negedge clock); run = 1;
+        // @(negedge clock); run = 0;
         // @(posedge done_out);
+        
         // repeat (1000) @(negedge clock);
 
         print_mem;
