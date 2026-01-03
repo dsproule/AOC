@@ -31,9 +31,9 @@ module aoc4_tb;
 
     );
 
-    assign partial_vec_in = (!done) ? tb_partial_vec_in : mach_partial_vec_out;
-    assign row_addr_in    = (!done) ? tb_row_addr_in : mach_row_addr_out;
-    assign col_addr_in    = (!done) ? tb_col_addr_in : mach_col_addr_out;
+    assign partial_vec_in = (!done) ? tb_partial_vec_in : '0;
+    assign row_addr_in    = (!done) ? tb_row_addr_in : '0;
+    assign col_addr_in    = (!done) ? tb_col_addr_in : '0;
 
     initial forever #5 clock = ~clock;
 
@@ -44,7 +44,7 @@ module aoc4_tb;
 
     task print_mem;
         for (int i = 0; i < `BANK_DEPTH; i++) begin
-            // $display("%0d: %1b", i, dut.data.mem[i]);
+            $display("%0d: %1b", i, main_mem.data.mem[i]);
         end
     endtask
 
@@ -58,8 +58,9 @@ module aoc4_tb;
         tb_row_addr_in = row_i;
         tb_col_addr_in = col_i;
         if (!ack) @(posedge ack);
-        @(negedge clock);
+        // @(negedge clock);
         write_en = 1'b0;
+        if (busy) @(negedge ack);
     endtask
 
     int fd;
@@ -96,9 +97,9 @@ module aoc4_tb;
             if (c == -1) begin
                 done = 1;
             end else if (c == 10) begin
-                // write_mem(partial_row_vec, row_i, (`MAX_COLS / `TX_DATA_WIDTH) * `TX_DATA_WIDTH);
-                // col_i = 0;
-                // row_i++;
+                write_mem(partial_row_vec, row_i, (`MAX_COLS / `TX_DATA_WIDTH) * `TX_DATA_WIDTH);
+                col_i = 0;
+                row_i++;
                 
             end else begin
                 if (col_i % `TX_DATA_WIDTH == 0 && col_i > 0) begin
@@ -109,8 +110,10 @@ module aoc4_tb;
                 col_i++;
             end
         end
-
+        if (col_i != 0) write_mem(partial_row_vec, row_i, (`MAX_COLS / `TX_DATA_WIDTH) * `TX_DATA_WIDTH);
+        @(negedge clock);
         print_mem;
+
         $finish;
     end
 
