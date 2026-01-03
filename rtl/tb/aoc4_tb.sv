@@ -34,7 +34,7 @@ module aoc4_tb;
     assign row_addr_in    = (!done) ? tb_row_addr_in : mach_row_addr_out;
     assign col_addr_in    = (!done) ? tb_col_addr_in : mach_col_addr_out;
     assign read_en        = (!done) ? tb_read_en : mach_read_en;
-    assign write_en        = (!done) ? tb_write_en : mach_write_en;
+    assign write_en       = (!done) ? tb_write_en : mach_write_en;
 
     initial forever #5 clock = ~clock;
 
@@ -127,7 +127,8 @@ module aoc4_tb;
         run = 0;
 
         @(negedge mach.regs_valid);
-        // repeat (100) @(negedge clock);
+        @(negedge mach_read_en);
+        // repeat (10) @(negedge clock);
         $display();
         print_regs;
         $finish;
