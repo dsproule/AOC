@@ -123,8 +123,8 @@ module aoc4_tb;
         end
         if (col_i != 0) write_mem(partial_row_vec, row_i, (`MAX_COLS / `TX_DATA_WIDTH) * `TX_DATA_WIDTH);
         @(negedge clock);
-        print_mem;
-        $display();
+        // print_mem;
+        // $display();
 
         while (mach_changed_out) begin
             run = 1;
@@ -134,7 +134,8 @@ module aoc4_tb;
             repeat (2) @(negedge clock);
         end
 
-        print_mem;
+        // print_mem;
+        $display("Updates: %0d", mach.updates);
         $finish;
     end
 

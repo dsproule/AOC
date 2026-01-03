@@ -1,7 +1,7 @@
 `ifndef AOC4__
 `define AOC4__
 
-`define MAX_ROWS 10
+`define MAX_ROWS 139
 `define MAX_COLS `MAX_ROWS
 
 `define MACH_N 1
@@ -10,7 +10,7 @@
 
 `define GRID_VEC_ALIGN_N (((`MAX_COLS + 2 + `TX_DATA_WIDTH - 1) / `TX_DATA_WIDTH) * `TX_DATA_WIDTH)
 `define COL_ADDR_WIDTH $clog2(`GRID_VEC_ALIGN_N)
-`define TX_DATA_WIDTH 4
+`define TX_DATA_WIDTH 64
 
 `define VEC_OFFSET(col_i) ((col_i & ~(`TX_DATA_WIDTH - 1)))
 
