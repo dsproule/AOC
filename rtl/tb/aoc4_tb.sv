@@ -50,6 +50,7 @@ module aoc4_tb;
     endtask
     
     task print_regs;
+        $display("row_addr_out: %0d, mach_write: %0b", mach.row_addr_out_buf - 1, mach_write_en);
         for (int i = 0; i < 3; i++) begin
             $display("%0d: %1b", i, mach.regs[i]);
         end
@@ -120,6 +121,7 @@ module aoc4_tb;
         if (col_i != 0) write_mem(partial_row_vec, row_i, (`MAX_COLS / `TX_DATA_WIDTH) * `TX_DATA_WIDTH);
         @(negedge clock);
         print_mem;
+        $display();
 
         // deploy the machines
         run = 1;
@@ -127,10 +129,16 @@ module aoc4_tb;
         run = 0;
 
         @(negedge mach.regs_valid);
-        @(negedge mach_read_en);
-        // repeat (10) @(negedge clock);
-        $display();
-        print_regs;
+        repeat (4) begin 
+            @(negedge mach_read_en);
+            @(negedge clock);
+            print_regs; 
+            $display();
+        end
+        // @(negedge mach_read_en);
+        // repeat (1000) @(negedge clock);
+
+        print_mem;
         $finish;
     end
 
