@@ -79,11 +79,13 @@ module freemachine #(
             // save chunks until end of line. latency-insensitive design,
             // helps contention of mem if each can be stalled
             
-            // if (row_addr_out == `BANK_DEPTH) begin
-            //     regs[2] <= -1;
-            //     regs_valid <= 1'b1;
-            //     col_i      <= '0;
-            // end else 
+            regs[insert_reg][`VEC_OFFSET(col_addr_out) +: `TX_DATA_WIDTH] <= partial_vec_in;
+
+            if (row_addr_out == `MAX_ROWS) begin
+                regs[2] <= '0;
+                regs_valid <= 1'b1;
+                col_i      <= '0;
+            end else 
             if (col_addr_out + `TX_DATA_WIDTH < `GRID_VEC_ALIGN_N) begin
                 col_addr_out <= col_addr_out + `TX_DATA_WIDTH;
             end else if (insert_reg != 2) begin
@@ -96,7 +98,6 @@ module freemachine #(
                 read_en_out <= 1'b0;
             end
 
-            regs[insert_reg][`VEC_OFFSET(col_addr_out) +: `TX_DATA_WIDTH] <= partial_vec_in;
         end else if (regs_valid && !done_out) begin
             // driver of the cycle
             regs[0] <= next_regs_0;
@@ -105,7 +106,8 @@ module freemachine #(
             if (prune) updates <= updates + 1;
             
             if (col_i == `GRID_VEC_ALIGN_N - 1) begin
-                // done_out <= row_addr_out;
+                if (row_addr_out == `MAX_ROWS)
+                    done_out <= 1'b1;
                 read_en_out <= 1'b1;
                 col_i <= '0;
                 col_addr_out <= '0;
