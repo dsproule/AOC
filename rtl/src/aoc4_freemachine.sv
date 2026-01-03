@@ -62,6 +62,7 @@ module freemachine #(
         if (reset) begin
             {regs[0], regs[1], regs[2]} <= '0;
             regs_valid <= 1'b0;
+        end else if (stall) begin
         end else if (run) begin
             regs_valid   <= 1'b0;
 
@@ -72,32 +73,38 @@ module freemachine #(
         end else if (ack_in && !regs_valid) begin
             regs[insert_reg][`VEC_OFFSET(col_addr_out) +: `TX_DATA_WIDTH] <= partial_vec_in;
 
-            if (col_addr_out + `TX_DATA_WIDTH < `GRID_VEC_ALIGN_N && !last_row) begin
-                // do nothing. left like this to emulate corresponding position in other always_ff
-            end else if (insert_reg != 2 && !last_row) begin
-                insert_reg   <= insert_reg + 1;
-            end else begin
-                regs_valid  <= 1'b1;
-                if (last_row) regs[2] <= '0;
-            end
+            if (col_addr_out + `TX_DATA_WIDTH >= `GRID_VEC_ALIGN_N || last_row) begin
+                if (insert_reg != 2 && !last_row) begin
+                    insert_reg   <= insert_reg + 1;
+                end else begin
+                    regs_valid  <= 1'b1;
+                    if (last_row) regs[2] <= '0;
+                end
+            end 
         end else if (regs_valid && !done_out && !write_en_out) begin
             {regs[0], regs[1], regs[2]} <= {next_regs_0, next_regs_1, next_regs_2};
             if (col_i == `GRID_VEC_ALIGN_N - 1) regs_valid <= 1'b0;
         end
     end
 
+    // memory interactions machine
+    logic stall;
     always_ff @(posedge clock) begin
         if (reset) begin
-            done_out   <= 1'b0;
-            updates    <= '0;
+            done_out     <= 1'b0;
+            updates      <= '0;
+            stall        <= '0;
+            store_parity <= '0;
             
             read_en_buf  <= 1'b0;
+        end else if (stall) begin
+            // used to block execution of system
         end else if (run) begin
             // place initial values and set the machine to go. Initializer 
             // of machine in a block.
-            col_addr_out <= '0;
+            col_addr_out <=  '0;
             read_en_buf  <= 1'b1;
-            store_parity <= 2'b0;
+            store_parity <=  '0;
 
             if (start_row == 0) begin
                 row_addr_out <= start_row ;
