@@ -1,61 +1,36 @@
 `include "common.svh"
+`include "aoc4.svh"
 
 module aoc4_tb;
 
-    logic clock, reset;
-    logic [`BANK_ADDR_WIDTH-1:0] row_addr_in, tb_row_addr_in;
-    logic tb_write_en, tb_read_en, ack, busy, pad_en;
-    logic [`TX_DATA_WIDTH-1:0]   partial_vec_in, tb_partial_vec_in, bank_partial_vec_out;
-    logic [`COL_ADDR_WIDTH-1:0]  col_addr_in, tb_col_addr_in;
-    logic read_en, write_en;
+    logic clock, reset, run, done, changed;
+    logic pad_en, mem_ack_out, mem_busy_out;
+    tb_packet_t tb_packet;
 
-    // Declare machine output signals as arrays
-    logic mach_changed_out [`MACH_N-1:0];
-    logic mach_done_out [`MACH_N-1:0];
-    logic mach_write_en [`MACH_N-1:0];
-    logic mach_read_en [`MACH_N-1:0];
-    logic [`BANK_ADDR_WIDTH-1:0] mach_row_addr_out [`MACH_N-1:0];
-    logic [`COL_ADDR_WIDTH-1:0] mach_col_addr_out [`MACH_N-1:0];
-    logic [`TX_DATA_WIDTH-1:0] mach_partial_vec_out [`MACH_N-1:0];
+    logic [`BANK_ADDR_WIDTH-1:0] tb_row_addr_dbg;
+    logic [`TX_DATA_WIDTH-1:0]   tb_partial_vec_dbg;
+    logic [`COL_ADDR_WIDTH-1:0]  tb_col_addr_dbg;
 
-    mem main_mem (
-        .clock(clock), .reset(reset),
-        .write_en(write_en), .read_en(read_en), .pad_en(pad_en),
-        .row_addr_in(row_addr_in),
-        .partial_vec_in(partial_vec_in),
-        .col_addr_in(col_addr_in),
-        
-        .ack(ack), .busy(busy),
-        .partial_vec_out(bank_partial_vec_out)
+    logic tb_write_en_dbg;
+    logic tb_read_en_dbg;
+    logic tb_staging_dbg;
+
+    assign tb_row_addr_dbg    = tb_packet.row_addr;
+    assign tb_col_addr_dbg    = tb_packet.col_addr;
+    assign tb_partial_vec_dbg = tb_packet.partial_vec;
+
+    assign tb_write_en_dbg    = tb_packet.write_en;
+    assign tb_read_en_dbg     = tb_packet.read_en;
+    assign tb_staging_dbg     = tb_packet.staging;
+
+    top dut(
+        .clock(clock), .reset(reset), 
+        .run_in(run), .pad_en(pad_en),
+        .tb_packet_in(tb_packet),
+
+        .mem_ack_out(mem_ack_out), .mem_busy_out(mem_busy_out),
+        .done_out(done), .changed_out(changed)
     );
-
-    logic run;
-    int done;
-
-    genvar mach_i;
-    generate 
-        for (mach_i = 0; mach_i < `MACH_N; mach_i++) begin : mach_gen
-            freemachine #(
-                .start_row(0), .end_row(`BANK_DEPTH)
-            ) mach (
-                .clock(clock), .reset(reset),
-                .partial_vec_in(bank_partial_vec_out),
-                .run(run), .ack_in(ack && done),
-
-                .changed_out(mach_changed_out[mach_i]), .done_out(mach_done_out[mach_i]),  
-                .write_en_out(mach_write_en[mach_i]), .read_en_out(mach_read_en[mach_i]),
-                .row_addr_out(mach_row_addr_out[mach_i]), .col_addr_out(mach_col_addr_out[mach_i]),
-                .partial_vec_out(mach_partial_vec_out[mach_i])
-            );
-        end 
-    endgenerate
-
-    // MUX between testbench control and machine control
-    assign partial_vec_in = (!done) ? tb_partial_vec_in : mach_partial_vec_out[0];
-    assign row_addr_in    = (!done) ? tb_row_addr_in : mach_row_addr_out[0];
-    assign col_addr_in    = (!done) ? tb_col_addr_in : mach_col_addr_out[0];
-    assign read_en        = (!done) ? tb_read_en : mach_read_en[0];
-    assign write_en       = (!done) ? tb_write_en : mach_write_en[0];
 
     initial forever #5 clock = ~clock;
 
@@ -66,7 +41,7 @@ module aoc4_tb;
 
     task print_mem;
         for (int i = 0; i < `BANK_DEPTH; i++) begin
-            $display("%0d: %1b", i, main_mem.data.mem[i]);
+            $display("%0d: %1b", i, dut.main_mem.data.mem[i]);
         end
     endtask
 
@@ -77,15 +52,15 @@ module aoc4_tb;
     );
         @(negedge clock);
         pad_en = 1'b1;
-        tb_write_en = 1'b1;
-        tb_read_en = 1'b0;
-        tb_partial_vec_in = partial_vec;
-        tb_row_addr_in = row_i;
-        tb_col_addr_in = col_i;
-        if (!ack) @(posedge ack);
-        tb_write_en = 1'b0;
+        tb_packet.write_en = 1'b1;
+        tb_packet.read_en = 1'b0;
+        tb_packet.partial_vec = partial_vec;
+        tb_packet.row_addr = row_i;
+        tb_packet.col_addr = col_i;
+        if (!mem_ack_out) @(posedge mem_ack_out);
+        tb_packet.write_en = 1'b0;
         pad_en = 1'b0;
-        if (busy) @(negedge ack);
+        if (mem_busy_out) @(negedge mem_ack_out);
     endtask
 
     int fd;
@@ -100,27 +75,27 @@ module aoc4_tb;
         // Initialize signals
         clock = 0;
         reset = 1;
-        tb_row_addr_in = '0;
-        tb_partial_vec_in = '0;
-        tb_col_addr_in = 0;
-        done = 0;
+        tb_packet.row_addr    = '0;
+        tb_packet.partial_vec = '0;
+        tb_packet.col_addr    = 0;
+        tb_packet.staging     = 1'b1;
         row_i = 0;
         col_i = 0;
         partial_row_vec = '0;
         run = 0;
-        tb_read_en = 0;
-        tb_write_en = 0;
+        tb_packet.read_en  = 0;
+        tb_packet.write_en = 0;
 
         repeat (3) @(negedge clock);
         reset = 0;
 
         // Load memory from file
         @(negedge clock);
-        while (!done) begin
+        while (tb_packet.staging) begin
             c = $fgetc(fd);
 
             if (c == -1) begin
-                done = 1;
+                tb_packet.staging = 1'b0;
             end else if (c == 10) begin
                 write_mem(partial_row_vec, row_i, (`MAX_COLS / `TX_DATA_WIDTH) * `TX_DATA_WIDTH);
                 col_i = 0;
@@ -138,19 +113,21 @@ module aoc4_tb;
         if (col_i != 0) write_mem(partial_row_vec, row_i, (`MAX_COLS / `TX_DATA_WIDTH) * `TX_DATA_WIDTH);
         
         @(negedge clock);
+        print_mem;
 
-        while (mach_changed_out[0]) begin
+        while (changed) begin
             // Run the machine
             run = 1;
             @(negedge clock);
             run = 0;
-            @(posedge mach_done_out[0]);
+            @(posedge done);
             repeat (2) @(negedge clock);
         end
 
         // Uncomment to print results
-        // print_mem;
-        $display("Updates: %0d", mach_gen[0].mach.updates);
+        $display();
+        print_mem;
+    //     $display("Updates: %0d", mach_gen[0].mach.updates);
         
         $finish;
     end

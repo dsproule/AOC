@@ -1,82 +1,67 @@
 `include "common.svh"
 `include "aoc4.svh"
 
-// memory controller used to control single bank. `MACH_N banks exist
-module mem (
-    input logic clock, reset,
-    input logic write_en, read_en, pad_en, 
-    input logic [`BANK_ADDR_WIDTH-1:0] row_addr_in,
-    input logic [`TX_DATA_WIDTH-1:0]   partial_vec_in,
-    input logic [`COL_ADDR_WIDTH-1:0]  col_addr_in,
-    
-    output logic ack, busy,
-    output logic [`TX_DATA_WIDTH-1:0] partial_vec_out
+module top(
+    input logic clock, reset, 
+    input tb_packet_t tb_packet_in,
+    input logic run_in, pad_en,
+
+    output logic mem_ack_out, mem_busy_out,
+    output logic done_out, changed_out
 );
 
-    logic [`BANK_DEPTH-1:0] dirty_list;
+    logic ack, busy;
+    logic read_en, write_en;
+    logic [`BANK_ADDR_WIDTH-1:0] row_addr_in;
+    logic [`TX_DATA_WIDTH-1:0]   partial_vec_in, bank_partial_vec_out;
+    logic [`COL_ADDR_WIDTH-1:0]  col_addr_in;
 
-    logic mem_init, fetch_en, addr_saved, writeback_commit;
-    logic [`GRID_VEC_ALIGN_N-1:0] bank_read_data, bank_vec_stable;
-    logic [`BANK_ADDR_WIDTH-1:0]  bank_vec_addr_saved;
+    // Declare machine output signals as arrays
+    logic [`MACH_N-1:0] mach_changed_out, mach_done_out, mach_write_en, mach_read_en;
+    logic [`BANK_ADDR_WIDTH-1:0] mach_row_addr_out [`MACH_N-1:0];
+    logic [`COL_ADDR_WIDTH-1:0] mach_col_addr_out [`MACH_N-1:0];
+    logic [`TX_DATA_WIDTH-1:0] mach_partial_vec_out [`MACH_N-1:0];
 
-    assign addr_saved = (mem_init && row_addr_in == bank_vec_addr_saved);
-    assign fetch_en = (read_en || write_en) && !addr_saved;
-
-    assign writeback_commit = fetch_state == WRITEBACK;
-
-    // inferred bram
-    single_port_sync_ram #(
-        .ADDR_WIDTH(`BANK_ADDR_WIDTH),
-        .DEPTH(`BANK_DEPTH)
-    ) data (
-        .clock(clock), .addr(row_addr_in),
-        .write_data(bank_vec_stable),
-        .bank_en(fetch_en || writeback_commit), .write_en(writeback_commit),
-
-        .read_data(bank_read_data)
+    mem main_mem (
+        .clock(clock), .reset(reset),
+        .write_en(write_en), .read_en(read_en), .pad_en(pad_en),
+        .row_addr_in(row_addr_in),
+        .partial_vec_in(partial_vec_in),
+        .col_addr_in(col_addr_in),
+        
+        .ack(ack), .busy(busy),
+        .partial_vec_out(bank_partial_vec_out)
     );
 
-    typedef enum logic [1:0] {IDLE, FETCH_SAVE, WRITEBACK} bank_fetch_t;
-    bank_fetch_t fetch_state, next_fetch_state;
+    assign mem_ack_out = ack;
+    assign mem_busy_out = busy;
 
-    // easier for timing synchronization. Also simulator disallows ternary assignments with types
-    always_comb begin
-        next_fetch_state = fetch_state;
+    genvar mach_i;
+    generate 
+        for (mach_i = 0; mach_i < `MACH_N; mach_i++) begin : mach_gen
+            freemachine #(
+                .start_row(0), .end_row(`BANK_DEPTH)
+            ) mach (
+                .clock(clock), .reset(reset),
+                .partial_vec_in(bank_partial_vec_out),
+                .run(run_in), .ack_in(ack && !tb_packet_in.staging),
 
-        case (fetch_state)
-            IDLE: if (fetch_en) next_fetch_state = FETCH_SAVE; 
-                  else if (addr_saved && write_en) next_fetch_state = WRITEBACK;
-            FETCH_SAVE: if (write_en) next_fetch_state = WRITEBACK; 
-                        else next_fetch_state = IDLE;
-            WRITEBACK: next_fetch_state = IDLE;
-        endcase
-    end
+                .changed_out(mach_changed_out[mach_i]), .done_out(mach_done_out[mach_i]),  
+                .write_en_out(mach_write_en[mach_i]), .read_en_out(mach_read_en[mach_i]),
+                .row_addr_out(mach_row_addr_out[mach_i]), .col_addr_out(mach_col_addr_out[mach_i]),
+                .partial_vec_out(mach_partial_vec_out[mach_i])
+            );
+        end 
+    endgenerate
 
-    assign busy = read_en || write_en || writeback_commit;
-    assign ack = (addr_saved && read_en) || writeback_commit;
+    assign done_out    = &mach_done_out;
+    assign changed_out = &mach_changed_out;
 
-    always_ff @(posedge clock) begin
-        if (reset) begin
-            fetch_state <= IDLE;
-            mem_init    <= 1'b0;
-            dirty_list  <=  '0;
-        end else begin
-            fetch_state <= next_fetch_state;
-
-            if (fetch_state == FETCH_SAVE) begin
-                bank_vec_stable     <= (!dirty_list[row_addr_in]) ? '0 : bank_read_data;
-                bank_vec_addr_saved <= row_addr_in;     // assumed to not change during fetch
-                if (write_en) begin
-
-                    bank_vec_stable[`VEC_OFFSET(col_addr_in) + pad_en +: `TX_DATA_WIDTH] <= partial_vec_in;
-                    dirty_list[row_addr_in] <= 1'b1;
-                end
-
-                mem_init <= 1'b1;
-            end else if (addr_saved && write_en && fetch_state == IDLE) bank_vec_stable[`VEC_OFFSET(col_addr_in) + pad_en +: `TX_DATA_WIDTH] <= partial_vec_in;
-        end
-    end
-    
-    assign partial_vec_out = bank_vec_stable[`VEC_OFFSET(col_addr_in) +: `TX_DATA_WIDTH];
+    // MUX between testbench control and machine control
+    assign partial_vec_in = (tb_packet_in.staging) ? tb_packet_in.partial_vec : mach_partial_vec_out[0];
+    assign row_addr_in    = (tb_packet_in.staging) ? tb_packet_in.row_addr    : mach_row_addr_out[0];
+    assign col_addr_in    = (tb_packet_in.staging) ? tb_packet_in.col_addr    : mach_col_addr_out[0];
+    assign read_en        = (tb_packet_in.staging) ? tb_packet_in.read_en     : mach_read_en[0];
+    assign write_en       = (tb_packet_in.staging) ? tb_packet_in.write_en    : mach_write_en[0];
 
 endmodule

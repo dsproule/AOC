@@ -196,7 +196,6 @@ int main() {
             mach.run();
             any_changed |= mach.changed_;
         }
-        break;
     }
     mem_inst.print();
     int all_updates = 0;
