@@ -10,7 +10,7 @@ typedef struct packed {
     tuple_pair_t second;
 } swp_tuple_pair_t;
 
-function automatic swp_tuple_pair_t cmp_swp(
+function automatic swp_tuple_pair_t cmp_swp (
     input tuple_pair_t a, b,
     input logic asc
 );
