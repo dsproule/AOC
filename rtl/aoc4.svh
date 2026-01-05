@@ -4,7 +4,7 @@
 `define MAX_ROWS 139
 `define MAX_COLS `MAX_ROWS
 
-`define MACH_N 4
+`define MACH_N 6
 `define BANK_DEPTH `MAX_ROWS
 `define MACH_ROWS `BANK_DEPTH / `MACH_N
 `define BANK_ADDR_WIDTH $clog2(`BANK_DEPTH)

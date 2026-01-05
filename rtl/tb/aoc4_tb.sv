@@ -121,6 +121,7 @@ module aoc4_tb;
         @(negedge clock);
         run = 0;
         @(posedge done);
+        @(posedge clock);
 
         $display();
         print_mem;

@@ -73,29 +73,28 @@ module top(
         end 
     endgenerate
 
-    logic run_started;
+    int add_i;
+    logic run_started, final_sum;
     always_ff @(posedge clock) begin
         if (reset) begin
             re_run      <= 1'b0;
             run_started <= 1'b0;
-            done_out    <= 1'b0;
             updates_out <=   '0;
+            add_i       <=   '0;
+            final_sum   <= 1'b0;
+        end else if (final_sum && add_i < `MACH_N) begin
+            add_i       <= add_i + 1;
+            updates_out <= updates_out + updates[add_i];
         end else if (run_started) begin
             re_run <= 1'b0;
-            // if (mach_done_out[0]) begin
-            //     if (~mach_changed_out[0]) begin
-            //         updates_out <= updates[0];
-            //         done_out <= 1'b1;
-            //     end else re_run <= 1'b1;
-            // end
             if (&mach_done_out) begin
-                if (~|mach_changed_out) begin
-                    updates_out <= updates[0];
-                    done_out <= 1'b1;
-                end else re_run <= 1'b1;
+                if (~|mach_changed_out) final_sum <= 1'b1;
+                else re_run <= 1'b1;
             end
         end else if (run_in) run_started <= 1'b1;
     end
+
+    assign done_out = (add_i == `MACH_N);
 
     // MUX between testbench control and machine control
     assign partial_vec_in = (tb_packet_in.staging) ? tb_packet_in.partial_vec : mach_partial_vec_out[arb_i];

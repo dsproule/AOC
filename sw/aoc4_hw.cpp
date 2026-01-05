@@ -4,9 +4,9 @@
 #include <array>
 #include <cassert>
 
-constexpr size_t MAX_ROWS = 10;
+constexpr size_t MAX_ROWS = 139;
 constexpr size_t MAX_COLS = MAX_ROWS;
-constexpr size_t TX_DATA_WIDTH = 4;
+constexpr size_t TX_DATA_WIDTH = 64;
 constexpr size_t GRID_VEC_ALIGN_N = ((MAX_COLS + 2 + TX_DATA_WIDTH - 1) / TX_DATA_WIDTH) * TX_DATA_WIDTH;
 
 constexpr size_t MACH_N = 2;                    // segments to break down (traversals take less time for grid)
@@ -201,9 +201,10 @@ int main() {
         }
     }
     mem_inst.print();
+
     int all_updates = 0;
-    for (FreeMachine& mach : machs)
-        all_updates += mach.updates_;
+    for (int j = 0; j < MACH_N; j++)
+        all_updates += machs[j].updates_;
 
     // std::cout << "Took " << iters << " iters\n";
     std::cout << "Answer is: " << all_updates << "\n";
