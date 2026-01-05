@@ -5,6 +5,7 @@ module aoc4_tb;
 
     logic clock, reset, run, done, changed;
     logic pad_en, mem_ack_out, mem_busy_out;
+    int updates;
     tb_packet_t tb_packet;
 
     logic [`BANK_ADDR_WIDTH-1:0] tb_row_addr_dbg;
@@ -29,7 +30,7 @@ module aoc4_tb;
         .tb_packet_in(tb_packet),
 
         .mem_ack_out(mem_ack_out), .mem_busy_out(mem_busy_out),
-        .done_out(done), .changed_out(changed)
+        .done_out(done), .updates_out(updates)
     );
 
     initial forever #5 clock = ~clock;
@@ -115,19 +116,15 @@ module aoc4_tb;
         @(negedge clock);
         print_mem;
 
-        while (changed) begin
-            // Run the machine
-            run = 1;
-            @(negedge clock);
-            run = 0;
-            @(posedge done);
-            repeat (2) @(negedge clock);
-        end
+        // Run the machine
+        run = 1;
+        @(negedge clock);
+        run = 0;
+        @(posedge done);
 
-        // Uncomment to print results
         $display();
         print_mem;
-    //     $display("Updates: %0d", mach_gen[0].mach.updates);
+        $display("Updates: %0d", updates);
         
         $finish;
     end

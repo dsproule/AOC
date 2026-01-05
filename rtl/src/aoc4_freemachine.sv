@@ -6,6 +6,7 @@ module freemachine #(
     input logic [`TX_DATA_WIDTH] partial_vec_in,
     input logic run, ack_in,
 
+    output int updates_out,
     output logic changed_out, done_out, write_en_out, read_en_out,
     output logic [`BANK_ADDR_WIDTH-1:0] row_addr_out,
     output logic [`COL_ADDR_WIDTH-1:0]  col_addr_out,
@@ -56,7 +57,7 @@ module freemachine #(
 
     logic store_pending, read_en_buf;
     logic [1:0] insert_reg, store_parity;
-    int col_i, row_i, updates;
+    int col_i, row_i;
 
     assign read_en_out = (write_en_out) ? 1'b0 : read_en_buf;
 
@@ -94,7 +95,7 @@ module freemachine #(
     always_ff @(posedge clock) begin
         if (reset) begin
             done_out_buf     <= 1'b0;
-            updates      <= '0;
+            updates_out      <= '0;
             store_parity <= '0;
             changed_out  <= 1'b1;
             
@@ -134,7 +135,7 @@ module freemachine #(
         end else if (regs_valid && !done_out_buf && !write_en_out) begin
             // driver of the cycle
             if (prune) begin
-                updates <= updates + 1;
+                updates_out <= updates_out + 1;
                 changed_out <= 1'b1;
             end
             
@@ -156,8 +157,7 @@ module freemachine #(
         end
     end
     
-    // assign write_en_out = store_parity[0] != store_parity[1];
-    assign write_en_out = (store_parity[0] != store_parity[1]) && 1;
+    assign write_en_out = (store_parity[0] != store_parity[1]);
     assign partial_vec_out = (col_i == '0) ? regs[0][`GRID_VEC_ALIGN_N - 1 -: `TX_DATA_WIDTH] : 
                                              regs[1][`GRID_VEC_ALIGN_N - 1 -: `TX_DATA_WIDTH] ;
     assign row_addr_out = (!write_en_out)  ? row_addr_out_buf     : 
