@@ -38,15 +38,32 @@ module top(
     assign mem_ack_out = ack;
     assign mem_busy_out = busy;
 
+    logic [`MACH_N-1:0] reqs, gnt;
+    int arb_i;
+
+    arb arbiter(
+        .clock(clock), .reset(reset),
+        .reqs_in(reqs), .ack_in(ack),
+
+        .gnt_out(gnt), .i_out(arb_i)
+    );
+
     genvar mach_i;
     generate 
         for (mach_i = 0; mach_i < `MACH_N; mach_i++) begin : mach_gen
+            int start_row_dbg, end_row_dbg;
+
+            assign start_row_dbg = mach_i * `MACH_ROWS;
+            assign end_row_dbg   = (mach_i == `MACH_N - 1) ? `MAX_ROWS : mach_i * `MACH_ROWS + `MACH_ROWS + 1;
+
+            assign reqs[mach_i] = (mach_write_en[mach_i] | mach_read_en[mach_i]);
+
             freemachine #(
-                .start_row(0), .end_row(`BANK_DEPTH)
+                .start_row(mach_i * `MACH_ROWS), .end_row((mach_i == `MACH_N - 1) ? `MAX_ROWS : mach_i * `MACH_ROWS + `MACH_ROWS + 1)
             ) mach (
                 .clock(clock), .reset(reset),
                 .partial_vec_in(bank_partial_vec_out),
-                .run(run_in | re_run), .ack_in(ack && !tb_packet_in.staging),
+                .run(run_in | re_run), .ack_in(gnt[mach_i] && ack && !tb_packet_in.staging),
 
                 .changed_out(mach_changed_out[mach_i]), .done_out(mach_done_out[mach_i]),  
                 .write_en_out(mach_write_en[mach_i]), .read_en_out(mach_read_en[mach_i]),
@@ -66,7 +83,7 @@ module top(
         end else if (run_started) begin
             re_run <= 1'b0;
             if (&mach_done_out) begin
-                if (!(|mach_changed_out)) begin
+                if (~|mach_changed_out) begin
                     updates_out <= updates[0];
                     done_out <= 1'b1;
                 end else re_run <= 1'b1;
@@ -75,10 +92,10 @@ module top(
     end
 
     // MUX between testbench control and machine control
-    assign partial_vec_in = (tb_packet_in.staging) ? tb_packet_in.partial_vec : mach_partial_vec_out[0];
-    assign row_addr_in    = (tb_packet_in.staging) ? tb_packet_in.row_addr    : mach_row_addr_out[0];
-    assign col_addr_in    = (tb_packet_in.staging) ? tb_packet_in.col_addr    : mach_col_addr_out[0];
-    assign read_en        = (tb_packet_in.staging) ? tb_packet_in.read_en     : mach_read_en[0];
-    assign write_en       = (tb_packet_in.staging) ? tb_packet_in.write_en    : mach_write_en[0];
+    assign partial_vec_in = (tb_packet_in.staging) ? tb_packet_in.partial_vec : mach_partial_vec_out[arb_i];
+    assign row_addr_in    = (tb_packet_in.staging) ? tb_packet_in.row_addr    : mach_row_addr_out[arb_i];
+    assign col_addr_in    = (tb_packet_in.staging) ? tb_packet_in.col_addr    : mach_col_addr_out[arb_i];
+    assign read_en        = (tb_packet_in.staging) ? tb_packet_in.read_en     : mach_read_en[arb_i];
+    assign write_en       = (tb_packet_in.staging) ? tb_packet_in.write_en    : mach_write_en[arb_i];
 
 endmodule

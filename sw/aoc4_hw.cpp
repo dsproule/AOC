@@ -9,7 +9,7 @@ constexpr size_t MAX_COLS = MAX_ROWS;
 constexpr size_t TX_DATA_WIDTH = 4;
 constexpr size_t GRID_VEC_ALIGN_N = ((MAX_COLS + 2 + TX_DATA_WIDTH - 1) / TX_DATA_WIDTH) * TX_DATA_WIDTH;
 
-constexpr size_t MACH_N = 1;                    // segments to break down (traversals take less time for grid)
+constexpr size_t MACH_N = 2;                    // segments to break down (traversals take less time for grid)
 constexpr size_t MACH_ROWS = MAX_ROWS / MACH_N; 
 
 #define base2(n) (n != 0 && (n & (n - 1)) == 0)
@@ -180,10 +180,13 @@ int main() {
     std::vector<FreeMachine> machs;
 
     for (size_t mach_i = 0; mach_i < MACH_N; mach_i++) {
-        if (mach_i == MACH_N - 1)
+        if (mach_i == MACH_N - 1) {
             machs.push_back(FreeMachine(mach_i * MACH_ROWS, MAX_ROWS, mem_inst));
-        else
+            std::cout << "start_row[" << mach_i << "]: " << mach_i * MACH_ROWS << ", end_row: " << MAX_ROWS << "\n";
+        } else {
             machs.push_back(FreeMachine(mach_i * MACH_ROWS, mach_i * MACH_ROWS + MACH_ROWS + 1, mem_inst));
+            std::cout << "start_row[" << mach_i << "]: " << mach_i * MACH_ROWS << ", end_row: " << mach_i * MACH_ROWS + MACH_ROWS + 1 << "\n";
+        }
     }
 
     std::cout << "\n";
