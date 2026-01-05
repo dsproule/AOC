@@ -32,7 +32,7 @@ module freemachine #(
     logic [3:0] degree;
     logic [`GRID_VEC_ALIGN_N-1:0] next_regs_1, next_regs_2, next_regs_0;
 
-    assign last_row = (row_addr_out_buf == `MAX_ROWS);
+    assign last_row = (row_addr_out_buf == end_row);
 
     // accumulation 
     always_comb begin
@@ -69,6 +69,7 @@ module freemachine #(
         end else if (run) begin
             regs_valid <= 1'b0;
 
+            insert_reg <= '0;
             if (start_row == 0) begin
                 regs[0]      <= '0;
                 insert_reg   <= 1;

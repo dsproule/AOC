@@ -95,7 +95,9 @@ module top(
     assign partial_vec_in = (tb_packet_in.staging) ? tb_packet_in.partial_vec : mach_partial_vec_out[arb_i];
     assign row_addr_in    = (tb_packet_in.staging) ? tb_packet_in.row_addr    : mach_row_addr_out[arb_i];
     assign col_addr_in    = (tb_packet_in.staging) ? tb_packet_in.col_addr    : mach_col_addr_out[arb_i];
-    assign read_en        = (tb_packet_in.staging) ? tb_packet_in.read_en     : mach_read_en[arb_i];
-    assign write_en       = (tb_packet_in.staging) ? tb_packet_in.write_en    : mach_write_en[arb_i];
+    assign read_en        = (tb_packet_in.staging) ? tb_packet_in.read_en     : 
+                            (|gnt)                 ? mach_read_en[arb_i]      : 1'b0;
+    assign write_en       = (tb_packet_in.staging) ? tb_packet_in.write_en    : 
+                            (|gnt)                 ? mach_write_en[arb_i]     : 1'b0;
 
 endmodule

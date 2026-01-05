@@ -22,7 +22,7 @@ module mem (
     assign addr_saved = (mem_init && row_addr_in == bank_vec_addr_saved);
     assign fetch_en = (read_en || write_en) && !addr_saved;
 
-    assign writeback_commit = fetch_state == WRITEBACK;
+    assign writeback_commit = (fetch_state == WRITEBACK);
 
     // inferred bram
     single_port_sync_ram #(
