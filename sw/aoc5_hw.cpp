@@ -5,7 +5,7 @@
 #include <cassert>
 #include <algorithm>
 
-const size_t MAX_WIDTH = 256;
+const size_t MEM_DEPTH = 256;
 constexpr size_t LEFT_REGS_END = 16;
 constexpr size_t RIGHT_REGS_END = 32;
 constexpr size_t REGS_SIZE = 16;
@@ -180,7 +180,7 @@ class Mem {
 
  private: 
     static constexpr size_t n_banks = 2;
-    std::array<std::array<tuple_pair_t, ((MAX_WIDTH * 2) + n_banks - 1) / n_banks>, n_banks> bram_start_bank_;
+    std::array<std::array<tuple_pair_t, ((MEM_DEPTH * 2) + n_banks - 1) / n_banks>, n_banks> bram_start_bank_;
 };
 
 int main() {
@@ -211,132 +211,121 @@ int main() {
     for (int i = 0; i < stream.size(); i++)
         mem_inst.store_mem(stream[i].first, stream[i].second, i);
 
-    // std::vector<std::vector<tuple_pair_t>> regs_in(2), regs_out(2);
-    // int mem_i = 0;
-    // // phase 1 ------- sorting in mem
-    // while (mem_i < stream.size()) {
-    //     regs_in[0].clear();
-    //     regs_in[1].clear();
-
-    //     // exploit banks to load two values at a time
-    //     for (int j = mem_i; j < mem_i + REGS_SIZE; j = j + 2) {
-    //         regs_in[0].push_back(mem_inst.load_mem(j));
-    //         regs_in[0].push_back(mem_inst.load_mem(j + 1));
-    //     }
-    //     sort_inst.bitonic_sort_16(std::span<tuple_pair_t, REGS_SIZE>(regs_in[0].data(), REGS_SIZE));
+    std::array<std::array<tuple_pair_t, 16>, 2> regs_in, regs_out;
+    int mem_i = 0;
+    // phase 1 ------- sorting in mem
+    while (mem_i < stream.size()) {
+        // exploit banks to load two values at a time
+        for (int j = mem_i; j < mem_i + REGS_SIZE; j = j + 2) {
+            regs_in[0][j - mem_i]     = mem_inst.load_mem(j);
+            regs_in[0][j - mem_i + 1] = mem_inst.load_mem(j + 1);
+        }
+        regs_out[0] = sort_inst.bitonic_sort_16(regs_in[0]);
         
-    //     // load and push thru while other is in flight
-    //     for (int j = mem_i + REGS_SIZE; j < mem_i + 2 * REGS_SIZE; j = j + 2) {
-    //         regs_in[1].push_back(mem_inst.load_mem(j));
-    //         regs_in[1].push_back(mem_inst.load_mem(j + 1));
-    //     }
-    //     sort_inst.bitonic_sort_16(std::span<tuple_pair_t, REGS_SIZE>(regs_in[1].data(), REGS_SIZE));
+        // load and push thru while other is in flight
+        for (int j = mem_i + REGS_SIZE; j < mem_i + 2 * REGS_SIZE; j = j + 2) {
+            regs_in[1][j - (mem_i + REGS_SIZE)]     = mem_inst.load_mem(j);
+            regs_in[1][j - (mem_i + REGS_SIZE) + 1] = mem_inst.load_mem(j + 1);
+        }
+        regs_out[1] = sort_inst.bitonic_sort_16(regs_in[1]);
+
+        // can try to exploit forwarding but difficult. Comparison of first 2 on each side
+        int left_regs_ptr, right_regs_ptr;
+        left_regs_ptr = right_regs_ptr = 0;
+        while (left_regs_ptr < REGS_SIZE && right_regs_ptr < REGS_SIZE) {
+            if (regs_out[0][left_regs_ptr] < regs_out[1][right_regs_ptr]) {
+                mem_inst.store_mem(regs_out[0][left_regs_ptr].first, regs_out[0][left_regs_ptr].second, mem_i);
+                left_regs_ptr++;
+            } else {
+                mem_inst.store_mem(regs_out[1][right_regs_ptr].first, regs_out[1][right_regs_ptr].second, mem_i);
+                right_regs_ptr++;
+            }
+            mem_i++;
+        }
+
+        while (left_regs_ptr < REGS_SIZE) {
+            mem_inst.store_mem(regs_out[0][left_regs_ptr].first, regs_out[0][left_regs_ptr].second, mem_i++);
+            left_regs_ptr++;
+        }
+        while (right_regs_ptr < REGS_SIZE) {
+            mem_inst.store_mem(regs_out[1][right_regs_ptr].first, regs_out[1][right_regs_ptr].second, mem_i++);
+            right_regs_ptr++;
+        }
+    }
+
+    // phase 2 ----- merging streams
+    int list_lens = 32;
+    while (list_lens <= MEM_DEPTH) {
+        int first_list_i = 0;
         
-    //     // stage both of them
-    //     regs_out[0].clear();
-    //     regs_out[1].clear();
-    //     for (int j = mem_i; j < mem_i + REGS_SIZE; j++) {
-    //         regs_out[0].push_back(regs_in[0][j]);
-    //         regs_out[1].push_back(regs_in[1][j]);
-    //     }
+        auto list_end = [list_lens](int list_base_i) -> int {
+            return list_base_i + list_lens - 1;
+        };
 
-    //     // can try to exploit forwarding but difficult. Comparison of first 2 on each side
-    //     int left_regs_ptr, right_regs_ptr;
-    //     left_regs_ptr = right_regs_ptr = 0;
-    //     while (left_regs_ptr < REGS_SIZE && right_regs_ptr < REGS_SIZE) {
-    //         if (regs_in[0][left_regs_ptr] < regs_in[1][right_regs_ptr]) {
-    //             mem_inst.store_mem(regs_in[0][left_regs_ptr].first, regs_in[0][left_regs_ptr].second, mem_i);
-    //             left_regs_ptr++;
-    //         } else {
-    //             mem_inst.store_mem(regs_in[1][right_regs_ptr].first, regs_in[1][right_regs_ptr].second, mem_i);
-    //             right_regs_ptr++;
-    //         }
-    //         mem_i++;
-    //     }
+        // parallelize the move for quicker iteration
+        while (first_list_i + (list_lens * 2) <= MEM_DEPTH) { 
+            // copy second sorted list to end
+            for (int off = 0; off < list_lens; off = off + 2) {
+                tuple_pair_t aux_list_pair_0 = mem_inst.load_mem(list_end(first_list_i + list_lens) - off);
+                tuple_pair_t aux_list_pair_1 = mem_inst.load_mem(list_end(first_list_i + list_lens) - (off + 1));
 
-    //     while (left_regs_ptr < REGS_SIZE) {
-    //         mem_inst.store_mem(regs_in[0][left_regs_ptr].first, regs_in[0][left_regs_ptr].second, mem_i++);
-    //         left_regs_ptr++;
-    //     }
-    //     while (right_regs_ptr < REGS_SIZE) {
-    //         mem_inst.store_mem(regs_in[1][right_regs_ptr].first, regs_in[1][right_regs_ptr].second, mem_i++);
-    //         right_regs_ptr++;
-    //     }
-    // }
+                mem_inst.store_mem(aux_list_pair_0.first, aux_list_pair_0.second, (MEM_DEPTH * 2) - 1 - off);
+                mem_inst.store_mem(aux_list_pair_1.first, aux_list_pair_1.second, (MEM_DEPTH * 2) - 1 - (off + 1));
+            }
 
-    // // phase 2 ----- merging streams
-    // int list_lens = 32;
-    // while (list_lens <= MAX_WIDTH) {
-    //     int first_list_i = 0;
-        
-    //     auto list_end = [list_lens](int list_base_i) -> int {
-    //         return list_base_i + list_lens - 1;
-    //     };
+            // place pointer at end of both lists
+            int fl_ptr = list_end(first_list_i), sl_ptr = (MEM_DEPTH * 2) - 1;
+            int sort_mem_i = list_end(first_list_i + list_lens);
 
-    //     // parallelize the move for quicker iteration
-    //     while (first_list_i + (list_lens * 2) <= MAX_WIDTH) { 
-    //         // copy second sorted list to end
-    //         for (int off = 0; off < list_lens; off = off + 2) {
-    //             tuple_pair_t aux_list_pair_0 = mem_inst.load_mem(list_end(first_list_i + list_lens) - off);
-    //             tuple_pair_t aux_list_pair_1 = mem_inst.load_mem(list_end(first_list_i + list_lens) - (off + 1));
+            tuple_pair_t fl_reg, sl_reg;
+            bool fl_valid = false, sl_valid = false;
+            while (fl_ptr > first_list_i - 1 && sl_ptr > (MEM_DEPTH * 2) - list_lens - 1) {
+                if (!fl_valid) fl_reg = mem_inst.load_mem(fl_ptr);
+                if (!sl_valid) sl_reg = mem_inst.load_mem(sl_ptr);
 
-    //             mem_inst.store_mem(aux_list_pair_0.first, aux_list_pair_0.second, (MAX_WIDTH * 2) - 1 - off);
-    //             mem_inst.store_mem(aux_list_pair_1.first, aux_list_pair_1.second, (MAX_WIDTH * 2) - 1 - (off + 1));
-    //         }
+                if (fl_reg.first > sl_reg.first) {
+                    mem_inst.store_mem(fl_reg.first, fl_reg.second, sort_mem_i);
+                    fl_valid = false;
+                    fl_ptr--;
+                } else {
+                    mem_inst.store_mem(sl_reg.first, sl_reg.second, sort_mem_i);
+                    sl_valid = false;
+                    sl_ptr--;
+                }
+                sort_mem_i--;
 
-    //         // place pointer at end of both lists
-    //         int fl_ptr = list_end(first_list_i), sl_ptr = (MAX_WIDTH * 2) - 1;
-    //         int sort_mem_i = list_end(first_list_i + list_lens);
+            }
 
-    //         tuple_pair_t fl_reg, sl_reg;
-    //         bool fl_valid = false, sl_valid = false;
-    //         while (fl_ptr > first_list_i - 1 && sl_ptr > (MAX_WIDTH * 2) - list_lens - 1) {
-    //             if (!fl_valid) fl_reg = mem_inst.load_mem(fl_ptr);
-    //             if (!sl_valid) sl_reg = mem_inst.load_mem(sl_ptr);
+            // move rest of list into place
+            while (sl_ptr > (MEM_DEPTH * 2) - list_lens - 1) {
+                sl_reg = mem_inst.load_mem(sl_ptr);
+                mem_inst.store_mem(sl_reg.first, sl_reg.second, sort_mem_i--);
+                sl_ptr--;
+            }
 
-    //             if (fl_reg.first > sl_reg.first) {
-    //                 mem_inst.store_mem(fl_reg.first, fl_reg.second, sort_mem_i);
-    //                 fl_valid = false;
-    //                 fl_ptr--;
-    //             } else {
-    //                 mem_inst.store_mem(sl_reg.first, sl_reg.second, sort_mem_i);
-    //                 sl_valid = false;
-    //                 sl_ptr--;
-    //             }
-    //             sort_mem_i--;
+            first_list_i += list_lens * 2;
+        }
+        list_lens *= 2;
+    }
 
-    //         }
-
-    //         // move rest of list into place
-    //         while (sl_ptr > (MAX_WIDTH * 2) - list_lens - 1) {
-    //             sl_reg = mem_inst.load_mem(sl_ptr);
-    //             mem_inst.store_mem(sl_reg.first, sl_reg.second, sort_mem_i--);
-    //             sl_ptr--;
-    //         }
-
-    //         first_list_i += list_lens * 2;
-    //     }
-    //     list_lens *= 2;
-    // }
-
-    // int padding = MAX_WIDTH - stream.size();
+    int padding = MEM_DEPTH - stream.size();
     
-    // // phase 3 --------------- merge intervals
-    // uint64_t cum_sum = 0;
-    // tuple_pair_t prev_intv{1, 0}, cur_intv;
-    // for (int j = padding; j < padding + stream.size(); j++) {
-    //     cur_intv = mem_inst.load_mem(j);
-    //     if (cur_intv.first <= prev_intv.second) {
-    //         // merge
-    //         prev_intv.second = std::max(cur_intv.second, prev_intv.second);
-    //     } else {
-    //         cum_sum += prev_intv.second - prev_intv.first + 1;
-    //         prev_intv = cur_intv;
-    //     }
-    // }
-    // cum_sum += prev_intv.second - prev_intv.first + 1;
-    // std::cout << "Answer: " << cum_sum << "\n";
-    // std::cout << "Correct: " << (343143696885053 == cum_sum) << "\n";
+    // phase 3 --------------- merge intervals
+    uint64_t cum_sum = 0;
+    tuple_pair_t prev_intv{1, 0}, cur_intv;
+    for (int j = padding; j < padding + stream.size(); j++) {
+        cur_intv = mem_inst.load_mem(j);
+        if (cur_intv.first <= prev_intv.second) {
+            // merge
+            prev_intv.second = std::max(cur_intv.second, prev_intv.second);
+        } else {
+            cum_sum += prev_intv.second - prev_intv.first + 1;
+            prev_intv = cur_intv;
+        }
+    }
+    cum_sum += prev_intv.second - prev_intv.first + 1;
+    std::cout << "Answer: " << cum_sum << "\n";
+    std::cout << "Correct: " << (343143696885053 == cum_sum) << "\n";
     
     infile.close();
     return 0;
