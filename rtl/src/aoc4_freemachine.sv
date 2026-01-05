@@ -59,7 +59,7 @@ module freemachine #(
     logic [1:0] insert_reg, store_parity;
     int col_i, row_i;
 
-    assign read_en_out = (write_en_out) ? 1'b0 : read_en_buf;
+    assign read_en_out = (write_en_out || done_out) ? 1'b0 : read_en_buf;
 
     // reg loading handler. (timing of counters)
     always_ff @(posedge clock) begin
@@ -83,7 +83,7 @@ module freemachine #(
                     insert_reg   <= insert_reg + 1;
                 end else begin
                     regs_valid  <= 1'b1;
-                    if (last_row) regs[2] <= '0;
+                    if (row_addr_out == `MAX_ROWS) regs[2] <= '0;
                 end
             end 
         end else if (regs_valid && !done_out_buf && !write_en_out) begin

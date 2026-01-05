@@ -82,6 +82,12 @@ module top(
             updates_out <=   '0;
         end else if (run_started) begin
             re_run <= 1'b0;
+            // if (mach_done_out[0]) begin
+            //     if (~mach_changed_out[0]) begin
+            //         updates_out <= updates[0];
+            //         done_out <= 1'b1;
+            //     end else re_run <= 1'b1;
+            // end
             if (&mach_done_out) begin
                 if (~|mach_changed_out) begin
                     updates_out <= updates[0];
