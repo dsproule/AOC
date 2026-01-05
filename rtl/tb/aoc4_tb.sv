@@ -42,7 +42,7 @@ module aoc4_tb;
 
     task print_mem;
         for (int i = 0; i < `BANK_DEPTH; i++) begin
-            $display("%0d: %1b", i, dut.main_mem.data.mem[i]);
+            $display("%3d: %1b", i, dut.main_mem.data.mem[i]);
         end
     endtask
 
@@ -69,6 +69,16 @@ module aoc4_tb;
     int row_i, col_i;
     logic [`TX_DATA_WIDTH-1:0] partial_row_vec;
 
+    logic core_executing;
+    longint unsigned cycle_count;
+    always_ff @(posedge clock) begin
+        if (reset) begin
+            cycle_count <= '0;
+        end else if (core_executing) begin
+            cycle_count <= cycle_count + 1;
+        end
+    end
+
     initial begin
         fd = $fopen("input4.txt", "r");
         if (fd == 0) $fatal(1, "ERROR: Could not open input4.txt");
@@ -86,6 +96,7 @@ module aoc4_tb;
         run = 0;
         tb_packet.read_en  = 0;
         tb_packet.write_en = 0;
+        core_executing     = 0;
 
         repeat (3) @(negedge clock);
         reset = 0;
@@ -118,6 +129,7 @@ module aoc4_tb;
 
         // Run the machine
         run = 1;
+        core_executing = 1;
         @(negedge clock);
         run = 0;
         @(posedge done);
@@ -126,6 +138,8 @@ module aoc4_tb;
         $display();
         print_mem;
         $display("Updates: %0d", updates);
+        $display("Correct: %0b", updates == 8484);
+        $display("Cycles: %0d", cycle_count);
         
         $finish;
     end
