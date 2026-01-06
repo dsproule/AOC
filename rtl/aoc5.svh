@@ -36,5 +36,6 @@ endfunction
 `define index_flat(array, i) array[(i + 1) * $bits(tuple_pair_t) - 1 -: $bits(tuple_pair_t)]
 
 `define ARR_8_FLAT_WIDTH (8 * $bits(tuple_pair_t))
+`define ARR_16_FLAT_WIDTH (16 * $bits(tuple_pair_t))
 
 `endif

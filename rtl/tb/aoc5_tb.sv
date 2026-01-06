@@ -1,12 +1,10 @@
 module aoc5_tb;
 
     logic clock, reset;
-    logic valid_in;
-    logic [`ARR_8_FLAT_WIDTH-1:0] pairs_out_flat, pairs_in_flat;
-    
-    logic valid_out;
+    logic valid_in, valid_out;
+    logic [`ARR_16_FLAT_WIDTH-1:0] pairs_out_flat, pairs_in_flat;
 
-    sorter_8 #(.asc(1)) sort_8 (.*);
+    bitonic_sort_16 sort_16 (.*);
 
     initial forever #5 clock = ~clock;
 
@@ -15,58 +13,50 @@ module aoc5_tb;
         $dumpvars(0, aoc5_tb);
     end
 
-    task fill_8_in;
-        for (int i = 0; i < 8; i++)
+    task fill_16_in;
+        for (int i = 0; i < 16; i++)
             `index_flat(pairs_in_flat, i) = {`DATA_WIDTH'(($random / 1_000_000) & 32'hFFFF_FFFF), 
                                             `DATA_WIDTH'(($random / 1_000_000) & 32'hFFFF_FFFF)};
     endtask
 
     always_ff @(posedge clock) begin
-        if (1'b1 && (|sort_8.stage_valid || sort_8.valid_in || sort_8.valid_out)) begin
-            $write("pairs_in(%0b): ", valid_in);
+        if (1'b0 && sort_16.sort_8_done) begin
             for (int i = 0; i < 8; i++) begin
                 tuple_pair_t tmp_pair;
-                tmp_pair = `index_flat(pairs_in_flat, i);
+                tmp_pair = `index_flat(sort_16.monotonic_stage, i);
 
                 $write("(%0d, %0d) ", tmp_pair.first, tmp_pair.second);
             end
-            $write("\nstage_1(%0b): ", sort_8.stage_valid[1]);
+            $display("");
+        end
+
+        if (sort_16.bitonics_ready == 2'b11) begin
+            $write("top_stage: ");
             for (int i = 0; i < 8; i++) begin
-                $write("(%0d, %0d) ", 
-                    sort_8.stage_1[i][2*`DATA_WIDTH-1:`DATA_WIDTH],  // first
-                    sort_8.stage_1[i][`DATA_WIDTH-1:0]);
+                tuple_pair_t tmp_pair;
+                tmp_pair = `index_flat(sort_16.top_stage, i);
+
+                $write("(%0d, %0d) ", tmp_pair.first, tmp_pair.second);
             end
-            $write("\nstage_2(%0b): ", sort_8.stage_valid[2]);
+            $display("");
+            $write("low_stage: ");
             for (int i = 0; i < 8; i++) begin
-                $write("(%0d, %0d) ", 
-                    sort_8.stage_2[i][2*`DATA_WIDTH-1:`DATA_WIDTH],  // first
-                    sort_8.stage_2[i][`DATA_WIDTH-1:0]);
+                tuple_pair_t tmp_pair;
+                tmp_pair = `index_flat(sort_16.low_stage, i);
+
+                $write("(%0d, %0d) ", tmp_pair.first, tmp_pair.second);
             end
-            $write("\nstage_3(%0b): ", sort_8.stage_valid[3]);
-            for (int i = 0; i < 8; i++) begin
-                $write("(%0d, %0d) ", 
-                    sort_8.stage_3[i][2*`DATA_WIDTH-1:`DATA_WIDTH],  // first
-                    sort_8.stage_3[i][`DATA_WIDTH-1:0]);
-            end
-            $write("\nstage_4(%0b): ", sort_8.stage_valid[4]);
-            for (int i = 0; i < 8; i++) begin
-                $write("(%0d, %0d) ", 
-                    sort_8.stage_4[i][2*`DATA_WIDTH-1:`DATA_WIDTH],  // first
-                    sort_8.stage_4[i][`DATA_WIDTH-1:0]);
-            end
-            $write("\nstage_5(%0b): ", sort_8.stage_valid[5]);
-            for (int i = 0; i < 8; i++) begin
-                $write("(%0d, %0d) ", 
-                    sort_8.stage_5[i][2*`DATA_WIDTH-1:`DATA_WIDTH],  // first
-                    sort_8.stage_5[i][`DATA_WIDTH-1:0]);
-            end
+            $display("");
+        end
+
+        if (valid_out) begin
             $write("\npairs_out(%0b): ", valid_out);
-            for (int i = 0; i < 8; i++) begin
-                tuple_pair_t tmp_pair;
-                tmp_pair = `index_flat(pairs_out_flat, i);
+                for (int i = 0; i < 16; i++) begin
+                    tuple_pair_t tmp_pair;
+                    tmp_pair = `index_flat(pairs_out_flat, i);
 
-                $write("(%0d, %0d) ", tmp_pair.first, tmp_pair.second);
-            end
+                    $write("(%0d, %0d) ", tmp_pair.first, tmp_pair.second);
+                end
             $display("\n");
         end
     end
@@ -81,14 +71,14 @@ module aoc5_tb;
         reset    = 0;
         @(negedge clock);
 
-        fill_8_in;
+        fill_16_in;
         valid_in = 1;
-        @(negedge clock);
+        repeat (2) @(negedge clock);
         pairs_in_flat = '0;
         valid_in = 0;
 
         @(posedge valid_out);
-        @(negedge clock);
+        // repeat (50) @(negedge clock);
         // print_8_in;
         // print_8_out;
         repeat (3) @(negedge clock);

@@ -46,7 +46,7 @@ class Sorter {
         
         std::array<tuple_pair_t, N> final_stage;
         std::array<tuple_pair_t, reach> top_stage, low_stage;
-        pass_through(intermed_stage, final_stage, N);
+        // pass_through(intermed_stage, final_stage, N);
         if (reach > 1) {
             // move values into input regs
             std::copy(intermed_stage.begin() + reach, intermed_stage.end(), top_stage.begin());
@@ -57,6 +57,8 @@ class Sorter {
 
             result = merger_N(low_stage);
             std::copy(result.begin(), result.end(), final_stage.begin());
+        } else {
+            final_stage = intermed_stage;
         }
         return final_stage;
     }
@@ -143,27 +145,9 @@ class Sorter {
         std::copy(top_stage.begin(), top_stage.end(), bitonic_stage.begin() + 8);
         std::copy(low_stage.begin(), low_stage.end(), bitonic_stage.begin());
 
-        // half cleaner
-        std::array<tuple_pair_t, 16> merger_stage;
-        pass_through(bitonic_stage, merger_stage, 16);
-        for (int i = 0; i < 8; i++) {
-            auto result = cmp_swp(bitonic_stage[i], bitonic_stage[i + 8], 1);
-            merger_stage[i]     = result.first;
-            merger_stage[i + 8] = result.second;
-        }
+        std::array<tuple_pair_t, 16> merger_stage = merger_N(bitonic_stage);
 
-        // recursive_merge
-        std::array<tuple_pair_t, 16> final_stage;
-        std::copy(merger_stage.begin() + 8, merger_stage.end(), top_stage.begin());
-        std::copy(merger_stage.begin(), merger_stage.begin() + 8, low_stage.begin());
-        
-        auto result = merger_N(top_stage);
-        std::copy(result.begin(), result.end(), final_stage.begin() + 8);
-
-        result = merger_N(low_stage);
-        std::copy(result.begin(), result.end(), final_stage.begin());
-
-        return final_stage;      
+        return merger_stage;
     }
 };
 
