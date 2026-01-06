@@ -33,4 +33,8 @@ endfunction
 
 `define pass_through(prev_stage, next_stage, N) begin for (int i = 0; i < N; i++) next_stage[i] <= prev_stage[i]; end
 
+`define index_flat(array, i) array[(i + 1) * $bits(tuple_pair_t) - 1 -: $bits(tuple_pair_t)]
+
+`define ARR_8_FLAT_WIDTH (8 * $bits(tuple_pair_t))
+
 `endif

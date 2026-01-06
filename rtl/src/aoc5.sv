@@ -1,19 +1,26 @@
 `include "common.svh"
 `include "aoc5.svh"
 
+// arrays flattened in io to allow synthesis
 module sorter_8 #(
     parameter asc = 1
 )(
-    input logic clock, reset,
-    input logic valid_in,
-    input tuple_pair_t pairs_in [8],
+    input logic clock, reset, valid_in,
+    input logic [`ARR_8_FLAT_WIDTH-1:0] pairs_in_flat,
     
     output logic valid_out,
-    output tuple_pair_t pairs_out [8]
+    output logic [`ARR_8_FLAT_WIDTH-1:0] pairs_out_flat
 );
     tuple_pair_t stage_1 [8], stage_2 [8], stage_3 [8];
     tuple_pair_t stage_4 [8], stage_5 [8];
+    tuple_pair_t pairs_out_unpack [8], pairs_in_unpack [8];
+
     logic [5:1] stage_valid;
+
+    always_comb begin
+        for (int i = 0; i < 8; i++) 
+            pairs_in_unpack[i] = `index_flat(pairs_in_flat, i);
+    end
 
     // stage 1
     always_ff @(posedge clock) begin
@@ -22,10 +29,10 @@ module sorter_8 #(
                 stage_1[i] <= '0;
             stage_valid[1] <= 1'b0;
         end else begin
-            `pass_through(pairs_in, stage_1, 8);
+            `pass_through(pairs_in_unpack, stage_1, 8);
             for (int i = 0; i < 6; i = i + 4) begin
-                {stage_1[i], stage_1[i + 2]} <= cmp_swp(pairs_in[i], pairs_in[i + 2], asc);
-                {stage_1[i + 1], stage_1[i + 3]} <= cmp_swp(pairs_in[i + 1], pairs_in[i + 3], asc);
+                {stage_1[i], stage_1[i + 2]} <= cmp_swp(pairs_in_unpack[i], pairs_in_unpack[i + 2], asc);
+                {stage_1[i + 1], stage_1[i + 3]} <= cmp_swp(pairs_in_unpack[i + 1], pairs_in_unpack[i + 3], asc);
             end
 
             stage_valid[1] <= valid_in;
@@ -96,15 +103,20 @@ module sorter_8 #(
     always_ff @(posedge clock) begin
         if (reset) begin
             for (int i = 0; i < 8; i++)
-                pairs_out[i] <= '0;
+                pairs_out_unpack[i] <= '0;
             valid_out <= 1'b0;
         end else begin
-            `pass_through(stage_5, pairs_out, 8);
+            `pass_through(stage_5, pairs_out_unpack, 8);
             for (int i = 1; i < 7; i = i + 2)
-                {pairs_out[i], pairs_out[i + 1]} <= cmp_swp(stage_5[i], stage_5[i + 1], asc);
+                {pairs_out_unpack[i], pairs_out_unpack[i + 1]} <= cmp_swp(stage_5[i], stage_5[i + 1], asc);
 
             valid_out <= stage_valid[5];
         end
+    end
+
+    always_comb begin
+        for (int i = 0; i < 8; i++) 
+            `index_flat(pairs_out_flat, i) = pairs_out_unpack[i];
     end
     
 endmodule
