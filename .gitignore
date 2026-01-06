@@ -1,2 +1,4 @@
 settings.json
 *.vcd
+.vscode
+sv2v
