@@ -133,12 +133,12 @@ module aoc4_tb;
         `print_bank(2);
 
         // Run the machine
-        // run = 1;
-        // core_executing = 1;
-        // @(negedge clock);
-        // run = 0;
-        // @(posedge done);
+        run = 1;
+        core_executing = 1;
         @(negedge clock);
+        run = 0;
+        // @(posedge done);
+        repeat (400) @(negedge clock);
         // @(posedge clock);
 
         $display();
