@@ -70,6 +70,7 @@ module freemachine #(
             regs_valid <= 1'b0;
 
             insert_reg <= '0;
+            // TODO: This turns into the sync
             if (start_row == 0) begin
                 regs[0]      <= '0;
                 insert_reg   <= 1;

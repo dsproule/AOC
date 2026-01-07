@@ -40,15 +40,17 @@ module aoc4_tb;
         $dumpvars(0, aoc4_tb);
     end
 
-    task print_mem;
-        for (int i = 0; i < `BANK_DEPTH; i++) begin
-            $display("%3d: %1b", i, dut.main_mem.data.mem[i]);
-        end
-    endtask
+    `define print_bank(bank_i) \
+    begin \
+        $display("Bank_%0d", bank_i); \
+        for (int i = 0; i < `BANK_DEPTH; i++) begin \
+            $display("%3d: %b", i, dut.mach_gen[bank_i].bank.data.mem[i]); \
+        end \
+    end
 
     task write_mem(
         input logic [`TX_DATA_WIDTH-1:0] partial_vec, 
-        input logic [`BANK_ADDR_WIDTH-1:0] row_i, 
+        input logic [$clog2(`MAX_ROWS)-1:0] row_i, 
         input logic [`COL_ADDR_WIDTH-1:0] col_i
     );
         @(negedge clock);
@@ -59,6 +61,7 @@ module aoc4_tb;
         tb_packet.row_addr = row_i;
         tb_packet.col_addr = col_i;
         if (!mem_ack_out) @(posedge mem_ack_out);
+        @(posedge clock);
         tb_packet.write_en = 1'b0;
         pad_en = 1'b0;
         if (mem_busy_out) @(negedge mem_ack_out);
@@ -125,18 +128,23 @@ module aoc4_tb;
         if (col_i != 0) write_mem(partial_row_vec, row_i, (`MAX_COLS / `TX_DATA_WIDTH) * `TX_DATA_WIDTH);
         
         @(negedge clock);
-        print_mem;
+        `print_bank(0);
+        `print_bank(1);
+        `print_bank(2);
 
         // Run the machine
-        run = 1;
-        core_executing = 1;
+        // run = 1;
+        // core_executing = 1;
+        // @(negedge clock);
+        // run = 0;
+        // @(posedge done);
         @(negedge clock);
-        run = 0;
-        @(posedge done);
-        @(posedge clock);
+        // @(posedge clock);
 
         $display();
-        print_mem;
+        // `print_bank(0);
+        // `print_bank(1);
+        // `print_bank(2);
         $display("Updates: %0d", updates);
         $display("Correct: %0b", updates == 8484);
         $display("Cycles: %0d", cycle_count);

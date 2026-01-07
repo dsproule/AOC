@@ -9,7 +9,7 @@ module mem (
     input logic [`TX_DATA_WIDTH-1:0]   partial_vec_in,
     input logic [`COL_ADDR_WIDTH-1:0]  col_addr_in,
     
-    output logic ack, busy,
+    output logic ack,
     output logic [`TX_DATA_WIDTH-1:0] partial_vec_out
 );
 
@@ -52,7 +52,6 @@ module mem (
         endcase
     end
 
-    assign busy = read_en || write_en || writeback_commit;
     assign ack  = (addr_saved && read_en) || writeback_commit;
 
     always_ff @(posedge clock) begin
