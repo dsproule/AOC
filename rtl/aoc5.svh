@@ -38,4 +38,7 @@ endfunction
 `define ARR_8_FLAT_WIDTH (8 * $bits(tuple_pair_t))
 `define ARR_16_FLAT_WIDTH (16 * $bits(tuple_pair_t))
 
+`define BANK_DEPTH 256
+`define BANK_ADDR_WIDTH $clog2(`BANK_DEPTH)
+
 `endif

@@ -4,7 +4,7 @@
 // arrays flattened in io to allow synthesis
 module sorter_8 (
     input logic clock, reset, 
-    input logic valid_in, asc, stall,
+    input logic valid_in, asc_in, stall_in,
     input logic [`ARR_8_FLAT_WIDTH-1:0] pairs_in_flat,
     
     output logic valid_out,
@@ -13,6 +13,14 @@ module sorter_8 (
     tuple_pair_t stage_1 [8], stage_2 [8], stage_3 [8];
     tuple_pair_t stage_4 [8], stage_5 [8];
     tuple_pair_t pairs_out_unpack [8], pairs_in_unpack [8];
+    logic [6:1] stage_stall;
+
+    assign stage_stall[1] = stage_stall[2] && stage_valid[1];
+    assign stage_stall[2] = stage_stall[3] && stage_valid[2];
+    assign stage_stall[3] = stage_stall[4] && stage_valid[3];
+    assign stage_stall[4] = stage_stall[5] && stage_valid[4];
+    assign stage_stall[5] = stage_stall[6] && stage_valid[5];
+    assign stage_stall[6] = stall_in && valid_out;
 
     logic [5:1] sort_dir, stage_valid;
 
@@ -27,14 +35,14 @@ module sorter_8 (
             for (int i = 0; i < 8; i++)
                 stage_1[i] <= '0;
             stage_valid[1] <= 1'b0;
-        end else begin
+        end else if (!stage_stall[1]) begin
             `pass_through(pairs_in_unpack, stage_1, 8);
             for (int i = 0; i < 6; i = i + 4) begin
-                {stage_1[i], stage_1[i + 2]}     <= cmp_swp(pairs_in_unpack[i], pairs_in_unpack[i + 2], asc);
-                {stage_1[i + 1], stage_1[i + 3]} <= cmp_swp(pairs_in_unpack[i + 1], pairs_in_unpack[i + 3], asc);
+                {stage_1[i], stage_1[i + 2]}     <= cmp_swp(pairs_in_unpack[i], pairs_in_unpack[i + 2], asc_in);
+                {stage_1[i + 1], stage_1[i + 3]} <= cmp_swp(pairs_in_unpack[i + 1], pairs_in_unpack[i + 3], asc_in);
             end
 
-            sort_dir[1]    <= asc;
+            sort_dir[1]    <= asc_in;
             stage_valid[1] <= valid_in;
         end
     end
@@ -45,7 +53,7 @@ module sorter_8 (
             for (int i = 0; i < 8; i++)
                 stage_2[i] <= '0;
             stage_valid[2] <= 1'b0;
-        end else begin
+        end else if (!stage_stall[2]) begin
             `pass_through(stage_1, stage_2, 8);
             for (int i = 0; i < 4; i++)
                 {stage_2[i], stage_2[i + 4]} <= cmp_swp(stage_1[i], stage_1[i + 4], sort_dir[1]);
@@ -61,7 +69,7 @@ module sorter_8 (
             for (int i = 0; i < 8; i++)
                 stage_3[i] <= '0;
             stage_valid[3] <= 1'b0;
-        end else begin
+        end else if (!stage_stall[3]) begin
             `pass_through(stage_2, stage_3, 8);
             for (int i = 0; i < 8; i = i + 2)
                 {stage_3[i], stage_3[i + 1]} <= cmp_swp(stage_2[i], stage_2[i + 1], sort_dir[2]);
@@ -77,7 +85,7 @@ module sorter_8 (
             for (int i = 0; i < 8; i++)
                 stage_4[i] <= '0;
             stage_valid[4] <= 1'b0;
-        end else begin
+        end else if (!stage_stall[4]) begin
             `pass_through(stage_3, stage_4, 8);
             for (int i = 2; i < 4; i++)
                 {stage_4[i], stage_4[i + 2]} <= cmp_swp(stage_3[i], stage_3[i + 2], sort_dir[3]);
@@ -93,7 +101,7 @@ module sorter_8 (
             for (int i = 0; i < 8; i++)
                 stage_5[i] <= '0;
             stage_valid[5] <= 1'b0;
-        end else begin
+        end else if (!stage_stall[5])begin
             `pass_through(stage_4, stage_5, 8);
             for (int i = 1; i < 4; i = i + 2)
                 {stage_5[i], stage_5[i + 3]} <= cmp_swp(stage_4[i], stage_4[i + 3], sort_dir[4]);
@@ -109,7 +117,7 @@ module sorter_8 (
             for (int i = 0; i < 8; i++)
                 pairs_out_unpack[i] <= '0;
             valid_out <= 1'b0;
-        end else begin
+        end else if (!stage_stall[6]) begin
             `pass_through(stage_5, pairs_out_unpack, 8);
             for (int i = 1; i < 7; i = i + 2)
                 {pairs_out_unpack[i], pairs_out_unpack[i + 1]} <= cmp_swp(stage_5[i], stage_5[i + 1], sort_dir[5]);
