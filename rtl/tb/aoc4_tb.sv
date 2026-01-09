@@ -130,20 +130,22 @@ module aoc4_tb;
         @(negedge clock);
         `print_bank(0);
         `print_bank(1);
-        `print_bank(2);
+        // `print_bank(2);
 
         // Run the machine
-        run = 1;
-        core_executing = 1;
-        @(negedge clock);
-        run = 0;
-        // @(posedge done);
-        repeat (400) @(negedge clock);
+        repeat (1) begin
+            run = 1;
+            core_executing = 1;
+            @(negedge clock);
+            run = 0;
+            // @(posedge done);
+            repeat (100) @(negedge clock);
+        end
         // @(posedge clock);
 
         $display();
-        // `print_bank(0);
-        // `print_bank(1);
+        `print_bank(0);
+        `print_bank(1);
         // `print_bank(2);
         $display("Updates: %0d", updates);
         $display("Correct: %0b", updates == 8484);

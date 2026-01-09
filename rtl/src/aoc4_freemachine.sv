@@ -44,19 +44,16 @@ module freemachine #(
         
         prune = (regs[1][1] && degree < 4);
 
-        // next_regs_0 = {regs[0][0], regs[0][`GRID_VEC_ALIGN_N-1:1]};
-        // next_regs_1 = {regs[1][0], regs[1][`GRID_VEC_ALIGN_N-1:1]};
-        // next_regs_2 = {regs[2][0], regs[2][`GRID_VEC_ALIGN_N-1:1]};
-        next_regs_0 = regs[0];
-        next_regs_1 = regs[1];
-        next_regs_2 = regs[2];
+        next_regs_0 = {regs[0][0], regs[0][`GRID_VEC_ALIGN_N-1:1]};
+        next_regs_1 = {regs[1][0], regs[1][`GRID_VEC_ALIGN_N-1:1]};
+        next_regs_2 = {regs[2][0], regs[2][`GRID_VEC_ALIGN_N-1:1]};
         
-        // if (prune) next_regs_1[0] = 1'b0;
+        if (prune) next_regs_1[0] = 1'b0;
 
         if (col_i == `GRID_VEC_ALIGN_N - 1) begin
             next_regs_0 = next_regs_1;
             next_regs_1 = next_regs_2;
-            next_regs_2 = (end_row + 1 == `MAX_ROWS) ? '0 : -1;
+            next_regs_2 = '0;
         end
     end
 
@@ -82,7 +79,7 @@ module freemachine #(
     always_ff @(posedge clock) begin
         if (reset) begin
             {regs[0], regs[1], regs[2]} <= '0;
-            regs_valid <= 1'b1;
+            regs_valid <= 1'b0;
             insert_reg <= '0;
         end else if (sync_valid) begin
             // this is sync top
@@ -133,10 +130,10 @@ module freemachine #(
             row_addr_out_buf <= '0;
             row_i <= start_row;
         end else if (stall) begin
-            // if (ack_in) begin
-            //     store_parity[1] <= ~store_parity[1];
-            //     col_addr_out <= col_i;
-            // end
+            if (write_en_out && ack_in) begin
+                store_parity[1] <= ~store_parity[1];
+                col_addr_out <= col_i;
+            end
         end else if (ack_in && !regs_valid) begin
             // save chunks until end of line. latency-insensitive design,
             // helps contention of mem if each can be stalled
@@ -163,7 +160,8 @@ module freemachine #(
                 col_i <= '0;
                 row_i <= row_i + 1;
 
-                if (row_i == end_row - 1) begin
+                if (row_i == end_row) done_out_buf <= 1'b1;
+                else if (row_i == end_row - 1) begin
                     sync_last_row_req_out <= (end_row + 1 != `MAX_ROWS);
                 end else begin
                     read_en_buf <= 1'b1;
@@ -172,19 +170,19 @@ module freemachine #(
 
             end else col_i <= col_i + 1;
             
-            // if (col_i[log2_mod-1:0] == log2_mod'(-1)) begin
-            //     store_parity[0] <= ~store_parity[0];
-            //     // at this point it is still within the prev so aligns auto
-            //     col_addr_out <= col_i;  
-            // end
+            if (col_i[log2_mod-1:0] == log2_mod'(-1)) begin
+                store_parity[0] <= ~store_parity[0];
+                // at this point it is still within the prev so aligns auto
+                col_addr_out <= col_i;  
+            end
         end
     end
     
-    assign write_en_out = (store_parity[0] != store_parity[1]);
+    assign write_en_out = (store_parity[0] != store_parity[1]) && (start_row == 4);
     assign partial_vec_out = (col_i == '0) ? regs[0][`GRID_VEC_ALIGN_N - 1 -: `TX_DATA_WIDTH] : 
                                              regs[1][`GRID_VEC_ALIGN_N - 1 -: `TX_DATA_WIDTH] ;
-    assign row_addr_out = row_addr_out_buf;
-    // assign row_addr_out = (!write_en_out)  ? row_addr_out_buf     : 
-    //                       (col_i == '0)    ? row_addr_out_buf - 2 : row_addr_out_buf - 1;
+    assign row_addr_out = (!write_en_out)  ? row_addr_out_buf     : 
+                          (col_i == '0)    ? row_addr_out_buf - 2 : row_addr_out_buf - 1;
+    // assign row_addr_out = row_addr_out_buf;
     
 endmodule

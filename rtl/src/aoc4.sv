@@ -12,7 +12,7 @@ module top(
 );
 
     // Declare machine output signals as arrays
-    logic [`MACH_N-1:0] ack, sync_ack_out, sync_last_row_req_out;
+    logic [`MACH_N-1:0] ack, sync_ack, sync_last_row_req, mach_done;
     logic re_run, sync_init, sync_end;
 
     assign sync_init = (sync != '0);
@@ -57,11 +57,11 @@ module top(
             ) mach (
                 .clock(clock), .reset(reset),
                 .partial_vec_in(mach_partial_vec_in),
-                .ack_in(mach_ack_in), .sync_init_in(sync_init),
+                .ack_in(!tb_packet_in.staging && mach_ack_in), .sync_init_in(sync_init),
 
-                .changed_out(), .done_out(),
+                .changed_out(), .done_out(mach_done[mach_i]),
                 .write_en_out(mach_write_en), .read_en_out(local_read_en), 
-                .sync_ack_out(sync_ack_out[mach_i]), .sync_last_row_req_out(sync_last_row_req_out[mach_i]),
+                .sync_ack_out(sync_ack[mach_i]), .sync_last_row_req_out(sync_last_row_req[mach_i]),
                 .row_addr_out(mach_row_addr[mach_i]), .col_addr_out(mach_col_addr[mach_i]),
                 .partial_vec_out(mach_partial_vec_out), .updates_out()
             );
@@ -109,10 +109,10 @@ module top(
         if      (reset)  sync <= '0;
         else if (run_in) sync <= 2'b01;
 
-        if (&sync_ack_out && sync_init) sync <= 2'b00;
+        if (&sync_ack && sync_init) sync <= 2'b00;
     end
 
-    assign sync_end = &sync_last_row_req_out[`MACH_N-2:0];
+    assign sync_end = &sync_last_row_req[`MACH_N-2:0];
 
     // int add_i;
     // logic run_started, final_sum;
@@ -136,6 +136,7 @@ module top(
     // end
 
     // assign done_out = (add_i == `MACH_N);
+    assign done_out = &mach_done;
 
 
 endmodule
