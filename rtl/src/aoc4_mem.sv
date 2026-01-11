@@ -27,7 +27,8 @@ module mem (
     // inferred bram
     single_port_sync_ram #(
         .ADDR_WIDTH(`BANK_ADDR_WIDTH),
-        .DEPTH(`BANK_DEPTH)
+        .DEPTH(`BANK_DEPTH),
+        .DATA_WIDTH(`GRID_VEC_ALIGN_N)
     ) data (
         .clock(clock), .addr(row_addr_in),
         .write_data(bank_vec_stable),

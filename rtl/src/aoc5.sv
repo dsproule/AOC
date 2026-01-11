@@ -43,12 +43,12 @@ module top (
             mem_i <= mem_i + 2;
 
             if (mem_i > '0)
-                `index_flat(pairs_in_flat, mem_i[3:0] - 2) <= {even_data_out, odd_data_out};
+                `index_flat(pairs_in_flat, (mem_i - 2) & 4'hF) <= {even_data_out, odd_data_out};
         end
     end
 
     int insert_i_dbg;
-    assign insert_i_dbg = (mem_i - 2)[3:0];
+    assign insert_i_dbg = (mem_i - 2) & 4'hF;
 
     always_ff @(posedge clock) begin
         if (reset) stream_len <= '0;
