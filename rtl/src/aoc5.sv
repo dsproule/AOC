@@ -23,14 +23,14 @@ module top (
         .even_data_out(even_data_out[0]), .odd_data_out(odd_data_out[0])
     );
     
-    // mem mem_pong (
-    //     .clock(clock),
-    //     .write_en(), .read_en(),
-    //     .row_addr_in(),
-    //     .even_data_in(), .odd_data_in(),
+    mem mem_pong (
+        .clock(clock),
+        .write_en(write_back_valid), .read_en(1'b0),
+        .row_addr_in(write_back_mem_i),
+        .even_data_in(write_back_regs[0]), .odd_data_in(write_back_regs[1]),
     
-    //     .even_data_out(), .odd_data_out()
-    // );
+        .even_data_out(), .odd_data_out()
+    );
 
     logic [`ARR_16_FLAT_WIDTH-1:0] pairs_in_flat, pairs_out_flat;
     logic sort_out_valid, sort_acc;
@@ -78,35 +78,43 @@ module top (
 
     // handle the initial merging of 32 values
     logic [1:0] merge_regs_valid;
-    int merge_0_regs_cnt, merge_1_regs_cnt;
+    int merge_0_regs_cnt, merge_1_regs_cnt, merge_both_regs_cnt;
     logic [`ARR_16_FLAT_WIDTH-1:0] merge_regs_flat [2];
+    
+    logic [`BANK_ADDR_WIDTH-1:0] write_back_mem_i;
+    logic          write_back_i, write_back_valid;
+    tuple_pair_t   write_back_regs [2];
 
     assign sort_acc = (merge_regs_valid < 2) && stream_done_in;
+    assign merge_both_regs_cnt = (merge_0_regs_cnt + merge_1_regs_cnt);
+    assign write_back_valid = (merge_both_regs_cnt % 2 == '0) && (merge_both_regs_cnt > 0) && (merge_both_regs_cnt < 33);
 
     always_ff @(posedge clock) begin
         if (reset) begin
-            merge_regs_valid <= '0;
+            merge_regs_valid <=  '0;
+            write_back_i     <= 1'b0;
+            write_back_mem_i <=  '0;
         end else if (sort_out_valid && (merge_regs_valid != 2'b11)) begin
             merge_regs_flat[merge_regs_valid] <= pairs_out_flat;
             merge_regs_valid <= {merge_regs_valid[0], 1'b1};
-            merge_0_regs_cnt <= 16;
-            merge_1_regs_cnt <= 16;
+            merge_0_regs_cnt <= '0;
+            merge_1_regs_cnt <= '0;
         end if (merge_regs_valid == 2'b11) begin
             
+            if (`index_flat(merge_regs_flat[0], 0) < `index_flat(merge_regs_flat[1], 0) && merge_0_regs_cnt < 16) begin
+                merge_regs_flat[0] <= (merge_regs_flat[0] >> $bits(tuple_pair_t));
+                write_back_regs[write_back_i] <= `index_flat(merge_regs_flat[0], 0);
+                merge_0_regs_cnt <= merge_0_regs_cnt + 1;
+            end else begin
+                merge_regs_flat[1] <= (merge_regs_flat[1] >> $bits(tuple_pair_t));
+                write_back_regs[write_back_i] <= `index_flat(merge_regs_flat[1], 0);
+                merge_1_regs_cnt <= merge_1_regs_cnt + 1;
+            end
+            write_back_i <= ~write_back_i;
+
+            if (write_back_valid) write_back_mem_i <= write_back_mem_i + 2;
         end
     end 
-
-    tuple_pair_t comb_0_swp [4], comb_1_swp [4], comb_2_swp [4];
-
-    always_comb begin
-        {comb_0_swp[0], comb_0_swp[1]} = cmp_swp(`index_flat(merge_regs_flat[0], 0), `index_flat(merge_regs_flat[0], 1), 1'b1);
-        {comb_0_swp[2], comb_0_swp[3]} = cmp_swp(`index_flat(merge_regs_flat[1], 0), `index_flat(merge_regs_flat[1], 1), 1'b1);
-        
-        {comb_1_swp[0], comb_1_swp[1]} = cmp_swp(comb_0_swp, comb_0_swp, 1'b1);
-        {comb_1_swp[2], comb_1_swp[3]} = cmp_swp(comb_0_swp, comb_0_swp, 1'b1);
-
-    end
-
 
     // simple counter to get the overall stream length. 
     always_ff @(posedge clock) begin

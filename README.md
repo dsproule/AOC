@@ -81,6 +81,7 @@ MACH_N: 6,TX_DATA_WIDTH: 32, Cycles: 181734
 ```
 
 ## 5
+
 ## 7
 The hardware acceleration for this challenge is also very simple. We use a single circular shift register to that represents the current downward splits. We let this cycle and apply the updates as needed in place until we get to teh final result where we sum the values.
 
