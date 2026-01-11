@@ -7,7 +7,7 @@ module sorter_8 (
     input logic valid_in, asc_in, stall_in,
     input logic [`ARR_8_FLAT_WIDTH-1:0] pairs_in_flat,
     
-    output logic valid_out,
+    output logic valid_out, saturated_out,
     output logic [`ARR_8_FLAT_WIDTH-1:0] pairs_out_flat
 );
     tuple_pair_t stage_1 [8], stage_2 [8], stage_3 [8];
@@ -131,6 +131,7 @@ module sorter_8 (
             `index_flat(pairs_out_flat, i) = pairs_out_unpack[i];
     end
 
+    assign saturated_out = &stage_valid;
     assign valid_out = stage_valid[6] && !stall_in;
     
 endmodule

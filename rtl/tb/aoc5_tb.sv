@@ -15,14 +15,65 @@ module aoc5_tb;
         $dumpvars(0, aoc5_tb);
     end
 
-    task print_mem;
+    // always_ff @(posedge clock) begin
+    //     if (dut.sort_16.bitonics_ready == 2'b11) begin
+    //         $display();
+    //         $write("top_stage: ");
+    //         for (int i = 0; i < 8; i++) begin
+    //             tuple_pair_t tmp_pair;
+    //             tmp_pair = `index_flat(dut.sort_16.top_stage, i);
+
+    //             $write("(%0d, %0d) ", tmp_pair.first, tmp_pair.second);
+    //         end
+    //         $display("");
+    //         $write("low_stage: ");
+    //         for (int i = 0; i < 8; i++) begin
+    //             tuple_pair_t tmp_pair;
+    //             tmp_pair = `index_flat(dut.sort_16.low_stage, i);
+
+    //             $write("(%0d, %0d) ", tmp_pair.first, tmp_pair.second);
+    //         end
+    //         $display("\n");
+    //     end
+
+    //     if (dut.sort_out_valid) begin
+    //         $write("\npairs_out(%0b): ", dut.sort_out_valid);
+    //             for (int i = 0; i < 16; i++) begin
+    //                 tuple_pair_t tmp_pair;
+    //                 tmp_pair = `index_flat(dut.pairs_out_flat, i);
+
+    //                 $write("(%0d, %0d) ", tmp_pair.first, tmp_pair.second);
+    //             end
+    //         $display("\n");
+    //     end
+    // end
+
+    task print_ping;
+        // tuple_pair_t pair;
+        // for (int i = 0; i < (`BANK_DEPTH); i = i + 2) begin
+        //     pair = dut.mem_ping.bank_even.mem[i];
+        //     $display("%0d-%0d", pair.first, pair.second);
+        //     pair = dut.mem_ping.bank_odd.mem[i];
+        //     $display("%0d-%0d", pair.first, pair.second);
+        // end
+    endtask
+    
+    task print_pong;
+        // tuple_pair_t pair;
+        // for (int i = 0; i < (`BANK_DEPTH); i = i + 2) begin
+        //     pair = dut.mem_pong.bank_even.mem[i];
+        //     $display("%0d-%0d", pair.first, pair.second);
+        //     pair = dut.mem_pong.bank_odd.mem[i];
+        //     $display("%0d-%0d", pair.first, pair.second);
+        // end
+    endtask
+    
+    task print_merge_regs;
         tuple_pair_t pair;
-        for (int i = 0; i < (`BANK_DEPTH); i = i + 2) begin
-            pair = dut.mem_inst.bank_even.mem[i];
-            $display("%0d-%0d", pair.first, pair.second);
-            pair = dut.mem_inst.bank_odd.mem[i];
-            $display("%0d-%0d", pair.first, pair.second);
-        end
+        pair = dut.merge_0_fir;
+        $display("%0d-%0d", pair.first, pair.second);
+        pair = dut.merge_1_fir;
+        $display("%0d-%0d", pair.first, pair.second);
     endtask
     
     int fd;
@@ -115,9 +166,10 @@ module aoc5_tb;
             end 
         end
         stream_done_in = 1;
-        repeat (32) @(negedge clock);
+        repeat (64) @(negedge clock);
         
         // print_mem;
+        print_merge_regs;
         $display("Done loading data");
         $fclose(fd);
         $finish;

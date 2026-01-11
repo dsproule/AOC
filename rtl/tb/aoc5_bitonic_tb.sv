@@ -1,7 +1,7 @@
 module aoc5_tb;
 
     logic clock, reset;
-    logic valid_in, valid_out, stall_in;
+    logic valid_in, valid_out, stall_in, acc_in, saturated_out;
     logic [`ARR_16_FLAT_WIDTH-1:0] pairs_out_flat, pairs_in_flat;
 
     bitonic_sort_16 sort_16 (.*);
@@ -20,7 +20,7 @@ module aoc5_tb;
     endtask
 
     always_ff @(posedge clock) begin
-        if (1'b0 && sort_16.sort_8_done) begin
+        if (1'b1 && sort_16.sort_8_done) begin
             for (int i = 0; i < 8; i++) begin
                 tuple_pair_t tmp_pair;
                 tmp_pair = `index_flat(sort_16.monotonic_stage, i);
@@ -67,6 +67,7 @@ module aoc5_tb;
         valid_in = 0;
         pairs_in_flat = '0;
         stall_in = 0;
+        acc_in   = 0;
 
         repeat (3) @(negedge clock);
         reset    = 0;
@@ -78,8 +79,11 @@ module aoc5_tb;
         pairs_in_flat = '0;
         valid_in = 0;
 
+        // repeat (7) @(negedge clock);
+        // stall_in = 1;
+        // repeat (3) @(negedge clock);
+        // stall_in = 0;
         @(posedge valid_out);
-        // repeat (50) @(negedge clock);
         // print_8_in;
         // print_8_out;
         repeat (3) @(negedge clock);

@@ -7,7 +7,7 @@ module merger_N #(
     input logic clock, reset, valid_in,
     input logic [ARR_N_FLAT_WIDTH-1:0] pairs_in_flat,
 
-    output logic valid_out,
+    output logic valid_out, 
     output logic [ARR_N_FLAT_WIDTH-1:0] pairs_out_flat
 );
     localparam reach = N >> 1;
@@ -38,13 +38,13 @@ module merger_N #(
             end
 
             merger_N #(.N(reach)) merge_top (
-                .clock(clock), .reset(reset),
+                .clock(clock), .reset(reset), 
                 .valid_in(intermed_valid), .pairs_in_flat(intermed_stage[ARR_N_FLAT_WIDTH-1:ARR_N_HALF_FLAT_WIDTH]),
 
                 .valid_out(merge_sub_N[0]), .pairs_out_flat(pairs_out_flat[ARR_N_FLAT_WIDTH-1:ARR_N_HALF_FLAT_WIDTH])
             );
             merger_N #(.N(reach)) merge_low (
-                .clock(clock), .reset(reset),
+                .clock(clock), .reset(reset), 
                 .valid_in(intermed_valid), .pairs_in_flat(intermed_stage[ARR_N_HALF_FLAT_WIDTH-1:0]),
 
                 .valid_out(merge_sub_N[1]), .pairs_out_flat(pairs_out_flat[ARR_N_HALF_FLAT_WIDTH-1:0])
@@ -63,10 +63,10 @@ endmodule
 
 module bitonic_sort_16 (
     input logic clock, reset, 
-    input logic valid_in, stall_in,
+    input logic valid_in,
     input logic [`ARR_16_FLAT_WIDTH-1:0] pairs_in_flat,
     
-    output logic valid_out,
+    output logic valid_out, saturated_out,
     output logic [`ARR_16_FLAT_WIDTH-1:0] pairs_out_flat
 );
 
@@ -78,7 +78,7 @@ module bitonic_sort_16 (
 
     sorter_8 sort_8 (
         .clock(clock), .reset(reset), 
-        .valid_in(valid_in), .asc_in(top_low_sel), .stall_in(stall_in),
+        .valid_in(valid_in), .asc_in(top_low_sel), .stall_in(1'b0),
         .pairs_in_flat((top_low_sel) ? pairs_in_flat[`ARR_16_FLAT_WIDTH-1:`ARR_8_FLAT_WIDTH] : 
                                                     pairs_in_flat[`ARR_8_FLAT_WIDTH-1:0]),
     
