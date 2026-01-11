@@ -20,9 +20,9 @@ module sorter_8 (
     assign stage_stall[3] = stage_stall[4] && stage_valid[3];
     assign stage_stall[4] = stage_stall[5] && stage_valid[4];
     assign stage_stall[5] = stage_stall[6] && stage_valid[5];
-    assign stage_stall[6] = stall_in && valid_out;
+    assign stage_stall[6] = stall_in && stage_valid[6];
 
-    logic [5:1] sort_dir, stage_valid;
+    logic [6:1] sort_dir, stage_valid;
 
     always_comb begin
         for (int i = 0; i < 8; i++) 
@@ -116,13 +116,13 @@ module sorter_8 (
         if (reset) begin
             for (int i = 0; i < 8; i++)
                 pairs_out_unpack[i] <= '0;
-            valid_out <= 1'b0;
+            stage_valid[6] <= 1'b0;
         end else if (!stage_stall[6]) begin
             `pass_through(stage_5, pairs_out_unpack, 8);
             for (int i = 1; i < 7; i = i + 2)
                 {pairs_out_unpack[i], pairs_out_unpack[i + 1]} <= cmp_swp(stage_5[i], stage_5[i + 1], sort_dir[5]);
 
-            valid_out <= stage_valid[5];
+            stage_valid[6] <= stage_valid[5];
         end
     end
 
@@ -130,5 +130,7 @@ module sorter_8 (
         for (int i = 0; i < 8; i++) 
             `index_flat(pairs_out_flat, i) = pairs_out_unpack[i];
     end
+
+    assign valid_out = stage_valid[6] && !stall_in;
     
 endmodule

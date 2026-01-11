@@ -17,7 +17,7 @@ module aoc5_tb;
 
     task print_mem;
         tuple_pair_t pair;
-        for (int i = 0; i < (`BANK_DEPTH / 2); i = i + 2) begin
+        for (int i = 0; i < (`BANK_DEPTH); i = i + 2) begin
             pair = dut.mem_inst.bank_even.mem[i];
             $display("%0d-%0d", pair.first, pair.second);
             pair = dut.mem_inst.bank_odd.mem[i];
@@ -114,8 +114,10 @@ module aoc5_tb;
                 tb_addr_in = tb_addr_in + 2;
             end 
         end
+        stream_done_in = 1;
+        repeat (32) @(negedge clock);
         
-        print_mem;
+        // print_mem;
         $display("Done loading data");
         $fclose(fd);
         $finish;
