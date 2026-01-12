@@ -11,6 +11,8 @@ typedef struct packed {
     tuple_pair_t second;
 } swp_tuple_pair_t;
 
+typedef enum logic {PING=0, PONG} ping_pong_t;
+
 function automatic swp_tuple_pair_t cmp_swp (
     input tuple_pair_t a, b,
     input logic asc
