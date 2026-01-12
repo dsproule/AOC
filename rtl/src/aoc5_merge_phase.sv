@@ -40,11 +40,13 @@ module merge_phase(
     tuple_pair_t stage_pair [2];
     logic stage_insert;
 
+    assign even_data_out = stage_pair[0];
+    assign odd_data_out = stage_pair[1];
+
     always_comb begin
         next_read_valid = 2'd3;
         read_addr_out   =  '0;
         read_en_out     = 1'b0;
-        write_en_out    = 1'b0;
 
         if (en_in && !merge_width_done) begin
             if (!entry_valid[0] && read_valid != '0 && !ptr_done[0]) begin
@@ -98,9 +100,10 @@ module merge_phase(
             end
 
             write_en_out <= 1'b0;
+            if (write_en_out) write_addr_out <= write_addr_out + 2;
 
             // perform the merge
-            if (&entry_valid && !merge_width_done) begin
+            if ((&entry_valid || (|entry_valid && |ptr_done)) && !merge_width_done) begin
                 if (front_pair[0] < front_pair[1]) begin
                     front_pair[0] <= back_pair[0];
                     back_pair[0]  <= -1;
@@ -119,7 +122,7 @@ module merge_phase(
                     stage_pair[stage_insert] <= front_pair[1];
                 end
                 
-                if (stage_insert) write_en_out <= 1'b1;
+                write_en_out <= stage_insert;
                 stage_insert <= ~stage_insert;
             end
         end
