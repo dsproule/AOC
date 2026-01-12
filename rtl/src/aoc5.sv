@@ -16,39 +16,30 @@ module top (
 
     mem mem_ping (
         .clock(clock),
-        .write_en(data_valid_in), .read_en(stream_done_in),
-        .row_addr_in((stream_done_in) ? mem_i[`BANK_ADDR_WIDTH-1:0] : tb_addr_in),
+        .write_en(data_valid_in), .read_en(mem_load_valid),
+        .row_addr_in((stream_done_in) ? mem_load_i[`BANK_ADDR_WIDTH-1:0] : tb_addr_in),
         .even_data_in(even_data_in), .odd_data_in(odd_data_in),
     
         .even_data_out(even_data_out[0]), .odd_data_out(odd_data_out[0])
     );
     
-    mem mem_pong (
-        .clock(clock),
-        .write_en(write_back_valid), .read_en(1'b0),
-        .row_addr_in(write_back_mem_i),
-        .even_data_in(write_back_regs[0]), .odd_data_in(write_back_regs[1]),
-    
-        .even_data_out(), .odd_data_out()
-    );
+    logic [`ARR_16_FLAT_WIDTH-1:0] sort_16_pairs_in_flat, sort_16_pairs_out_flat;
+    logic sort_16_out_valid, sort_acc;
 
-    logic [`ARR_16_FLAT_WIDTH-1:0] pairs_in_flat, pairs_out_flat;
-    logic sort_out_valid, sort_acc;
-
-    int stream_len, mem_i;
-    logic sort_stage_valid;
+    int stream_len, mem_load_i;
+    logic sort_16_in_valid;
 
     bitonic_sort_16 sort_16 (
         .clock(clock), .reset(reset), 
-        .valid_in(sort_stage_valid), 
-        .pairs_in_flat(pairs_in_flat),
+        .valid_in(sort_16_in_valid), 
+        .pairs_in_flat(sort_16_pairs_in_flat),
     
-        .valid_out(sort_out_valid),
-        .pairs_out_flat(pairs_out_flat)
+        .valid_out(sort_16_out_valid),
+        .pairs_out_flat(sort_16_pairs_out_flat)
     );
     
     logic [3:0] insert_i;
-    assign insert_i = (mem_i - 2) & 4'hF;
+    assign insert_i = (mem_load_i - 2) & 4'hF;
 
     logic parity_clock, sort_stage_parity;
     always_ff @(posedge clock) begin
@@ -56,65 +47,64 @@ module top (
         else parity_clock <= ~parity_clock;
     end
 
+    logic final_sort_valid;
+    logic mem_load_valid;
+    assign mem_load_valid = (stream_done_in && mem_load_i < stream_len && !sort_16_in_valid);
+
     // handles the cycling for loading regs for sort
     always_ff @(posedge clock) begin
         if (reset) begin
-            mem_i            <= '0;
-            sort_stage_valid <= 1'b0;
-        end else if (stream_done_in && mem_i < stream_len && !sort_stage_valid) begin
-            mem_i <= mem_i + 2;
+            mem_load_i        <= '0;
+            sort_16_in_valid <= 1'b0;
+            final_sort_valid <= 1'b0;
+        end else if (mem_load_valid) begin
+            mem_load_i <= mem_load_i + 2;
 
-            `index_flat(pairs_in_flat, insert_i)     <= even_data_out[PING];
-            `index_flat(pairs_in_flat, insert_i + 1) <= odd_data_out[PING];
+            `index_flat(sort_16_pairs_in_flat, insert_i)     <= even_data_out[PING];
+            `index_flat(sort_16_pairs_in_flat, insert_i + 1) <= odd_data_out[PING];
 
             // if mod_6 -> latch parity
-            if ((mem_i & 4'hF) == '0 && mem_i != '0) begin
-                sort_stage_valid  <= 1'b1;
+            if (((mem_load_i & 4'hF) == '0 && mem_load_i != '0) || mem_load_i == stream_len) begin
+                sort_16_in_valid  <= 1'b1;
                 sort_stage_parity <= parity_clock;
             end
 
-        end else if (parity_clock == sort_stage_parity) sort_stage_valid <= 1'b0;
+        end else if (parity_clock == sort_stage_parity) begin
+            sort_16_pairs_in_flat <=  '0 - 1;
+            sort_16_in_valid <= 1'b0;
+        end
     end
 
     // handle the initial merging of 32 values
-    logic [1:0] merge_regs_valid;
-    int merge_0_regs_cnt, merge_1_regs_cnt, merge_both_regs_cnt;
-    logic [`ARR_16_FLAT_WIDTH-1:0] merge_regs_flat [2];
-    
-    logic [`BANK_ADDR_WIDTH-1:0] write_back_mem_i;
-    logic          write_back_i, write_back_valid;
-    tuple_pair_t   write_back_regs [2];
-
-    assign sort_acc = (merge_regs_valid < 2) && stream_done_in;
-    assign merge_both_regs_cnt = (merge_0_regs_cnt + merge_1_regs_cnt);
-    assign write_back_valid = (merge_both_regs_cnt % 2 == '0) && (merge_both_regs_cnt > 0) && (merge_both_regs_cnt < 33);
-
+    logic [`ARR_16_FLAT_WIDTH-1:0] merge_regs_flat;
+    logic merge_write_valid;
+    int merge_regs_cnt, mem_write_i;
     always_ff @(posedge clock) begin
         if (reset) begin
-            merge_regs_valid <=  '0;
-            write_back_i     <= 1'b0;
-            write_back_mem_i <=  '0;
-        end else if (sort_out_valid && (merge_regs_valid != 2'b11)) begin
-            merge_regs_flat[merge_regs_valid] <= pairs_out_flat;
-            merge_regs_valid <= {merge_regs_valid[0], 1'b1};
-            merge_0_regs_cnt <= '0;
-            merge_1_regs_cnt <= '0;
-        end if (merge_regs_valid == 2'b11) begin
-            
-            if (`index_flat(merge_regs_flat[0], 0) < `index_flat(merge_regs_flat[1], 0) && merge_0_regs_cnt < 16) begin
-                merge_regs_flat[0] <= (merge_regs_flat[0] >> $bits(tuple_pair_t));
-                write_back_regs[write_back_i] <= `index_flat(merge_regs_flat[0], 0);
-                merge_0_regs_cnt <= merge_0_regs_cnt + 1;
-            end else begin
-                merge_regs_flat[1] <= (merge_regs_flat[1] >> $bits(tuple_pair_t));
-                write_back_regs[write_back_i] <= `index_flat(merge_regs_flat[1], 0);
-                merge_1_regs_cnt <= merge_1_regs_cnt + 1;
+            merge_regs_cnt  <= 18;
+            mem_write_i     <= '0;
+        end else begin
+            merge_regs_flat <= (merge_regs_flat >> (2 * $bits(tuple_pair_t)));
+            if (sort_16_out_valid) begin
+                merge_regs_flat <= sort_16_pairs_out_flat;
+                merge_regs_cnt  <= '0;
             end
-            write_back_i <= ~write_back_i;
 
-            if (write_back_valid) write_back_mem_i <= write_back_mem_i + 2;
+            if (merge_regs_cnt <= 16) merge_regs_cnt <= merge_regs_cnt + 2;
+            if (merge_regs_cnt == 16) mem_write_i    <= mem_write_i    + 16;
         end
-    end 
+    end
+
+    assign merge_write_valid = (merge_regs_cnt < 16);
+
+    mem mem_pong (
+        .clock(clock),
+        .write_en(merge_write_valid), .read_en(1'b0),
+        .row_addr_in(`BANK_ADDR_WIDTH'(mem_write_i + merge_regs_cnt)),
+        .even_data_in(`index_flat(merge_regs_flat, 0)), .odd_data_in(`index_flat(merge_regs_flat, 1)),
+    
+        .even_data_out(), .odd_data_out()
+    );
 
     // simple counter to get the overall stream length. 
     always_ff @(posedge clock) begin

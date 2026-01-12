@@ -1,7 +1,7 @@
 module aoc5_tb;
 
     logic clock, reset;
-    logic valid_in, valid_out, stall_in, acc_in, saturated_out;
+    logic valid_in, valid_out, acc_in, saturated_out;
     logic [`ARR_16_FLAT_WIDTH-1:0] pairs_out_flat, pairs_in_flat;
 
     bitonic_sort_16 sort_16 (.*);
@@ -66,7 +66,6 @@ module aoc5_tb;
         reset    = 1;
         valid_in = 0;
         pairs_in_flat = '0;
-        stall_in = 0;
         acc_in   = 0;
 
         repeat (3) @(negedge clock);
@@ -76,13 +75,11 @@ module aoc5_tb;
         fill_16_in;
         valid_in = 1;
         repeat (2) @(negedge clock);
-        pairs_in_flat = '0;
         valid_in = 0;
+        pairs_in_flat = '0;
 
         // repeat (7) @(negedge clock);
-        // stall_in = 1;
         // repeat (3) @(negedge clock);
-        // stall_in = 0;
         @(posedge valid_out);
         // print_8_in;
         // print_8_out;

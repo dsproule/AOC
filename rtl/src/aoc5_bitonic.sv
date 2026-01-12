@@ -78,7 +78,7 @@ module bitonic_sort_16 (
 
     sorter_8 sort_8 (
         .clock(clock), .reset(reset), 
-        .valid_in(valid_in), .asc_in(top_low_sel), .stall_in(1'b0),
+        .valid_in(valid_in), .asc_in(top_low_sel),
         .pairs_in_flat((top_low_sel) ? pairs_in_flat[`ARR_16_FLAT_WIDTH-1:`ARR_8_FLAT_WIDTH] : 
                                                     pairs_in_flat[`ARR_8_FLAT_WIDTH-1:0]),
     

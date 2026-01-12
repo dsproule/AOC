@@ -1,7 +1,7 @@
 module aoc5_tb;
 
     logic clock, reset;
-    logic valid_in, asc_in, stall_in;
+    logic valid_in, asc_in;
     logic [`ARR_8_FLAT_WIDTH-1:0] pairs_out_flat, pairs_in_flat;
     
     logic valid_out;
@@ -23,7 +23,6 @@ module aoc5_tb;
 
     always_ff @(posedge clock) begin
         if (1'b1 && (|sort_8.stage_valid || sort_8.valid_in || sort_8.valid_out)) begin
-            if (stall_in) $display("==== STALL ====");
             $write("pairs_in(%0b): ", valid_in);
             for (int i = 0; i < 8; i++) begin
                 tuple_pair_t tmp_pair;
@@ -77,7 +76,6 @@ module aoc5_tb;
         reset    = 1;
         valid_in = 0;
         asc_in      = 1;
-        stall_in    = 0;
         pairs_in_flat = '0;
 
         repeat (3) @(negedge clock);
@@ -92,7 +90,6 @@ module aoc5_tb;
         pairs_in_flat = '0;
         valid_in = 0;
         repeat (3) @(negedge clock);
-        stall_in = 1;
         @(negedge clock);
         
         // send next one
@@ -102,7 +99,6 @@ module aoc5_tb;
         pairs_in_flat = '0;
         valid_in = 0;
         repeat (3) @(negedge clock);
-        stall_in = 0;
 
         @(negedge valid_out);
         @(negedge clock);

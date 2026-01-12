@@ -7,10 +7,10 @@ TARGET := aoc
 all: $(TARGET)
 
 %_cpp: sw/%.cpp
-	g++ $(CXXFLAGS) $^ -o $(TARGET) && ./aoc
+	g++ $(CXXFLAGS) $^ -o inputs/$(TARGET) && cd inputs/ && ./aoc && rm aoc
 
 %_py: sw/%.py
-	python3 $^
+	cp $< inputs/$(notdir $<) && cd inputs && python3 $(notdir $<) && rm $(notdir $<)
 
 aoc5_sv: rtl/src/single_port_ram.sv rtl/src/aoc5_sorter_8.sv rtl/src/aoc5_mem.sv rtl/src/aoc5_bitonic.sv
 aoc5_bitonic_sv: rtl/src/aoc5_sorter_8.sv
@@ -20,7 +20,7 @@ aoc2_sv: rtl/src/aoc2_utils.sv rtl/src/aoc2_groupcount.sv rtl/src/aoc2_primcalc.
 
 # Simulation
 %_sv: rtl/src/%.sv rtl/tb/%_tb.sv
-	iverilog $(VFLAGS) -I ./rtl $^ -o aoc && ./aoc
+	iverilog $(VFLAGS) -I ./rtl $^ -o inputs/aoc && cd inputs && ./aoc && rm aoc
 
 clean:
 	rm -f aoc *.vcd *.gtkw rtl/converted.v
