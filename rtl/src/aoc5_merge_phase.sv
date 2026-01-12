@@ -22,11 +22,11 @@ module merge_phase(
     logic [1:0] ptr_done;
     logic [`BANK_ADDR_WIDTH-1:0] ptr_head [2], ptr_end [2];
     
-    // logic [`BANK_ADDR_WIDTH-1:0] ptr_head_0_dbg, ptr_head_1_dbg;
-    // logic [`BANK_ADDR_WIDTH-1:0] ptr_end_0_dbg, ptr_end_1_dbg;
+    logic [`BANK_ADDR_WIDTH-1:0] ptr_head_0_dbg, ptr_head_1_dbg;
+    logic [`BANK_ADDR_WIDTH-1:0] ptr_end_0_dbg, ptr_end_1_dbg;
     
-    // assign ptr_head_0_dbg = ptr_head[0];
-    // assign ptr_head_1_dbg = ptr_head[1];
+    assign ptr_head_0_dbg = ptr_head[0];
+    assign ptr_head_1_dbg = ptr_head[1];
     // assign ptr_end_0_dbg = ptr_end[0];
     // assign ptr_end_1_dbg = ptr_end[1];
 
@@ -38,6 +38,7 @@ module merge_phase(
     logic [1:0] read_valid, next_read_valid;
 
     tuple_pair_t stage_pair [2];
+    logic stage_insert;
 
     always_comb begin
         next_read_valid = 2'd3;
@@ -46,17 +47,15 @@ module merge_phase(
         write_en_out    = 1'b0;
 
         if (en_in && !merge_width_done) begin
-
             if (!entry_valid[0] && read_valid != '0 && !ptr_done[0]) begin
-                read_en_out = 1'b1;
-                read_addr_out   = ptr_head[0];
+                read_en_out     = 1'b1;
                 next_read_valid = 2'd0;
+                read_addr_out   = ptr_head[0];
             end else if (!entry_valid[1] && read_valid != 2'd1 && !ptr_done[1]) begin
-                read_en_out = 1'b1;
+                read_en_out     = 1'b1;
                 next_read_valid = 2'd1;
-                read_addr_out = ptr_head[1];
+                read_addr_out   = ptr_head[1];
             end
-
         end 
     end
 
@@ -70,6 +69,7 @@ module merge_phase(
             ptr_head[1]      <= '0;
             write_addr_out   <= '0;
             read_valid       <=  3;
+            stage_insert     <= 1'b0;
         end else if (en_in) begin
             read_valid <= next_read_valid;
 
@@ -97,10 +97,30 @@ module merge_phase(
 
             end
 
+            write_en_out <= 1'b0;
+
             // perform the merge
             if (&entry_valid && !merge_width_done) begin
-            
+                if (front_pair[0] < front_pair[1]) begin
+                    front_pair[0] <= back_pair[0];
+                    back_pair[0]  <= -1;
+                    
+                    if (ptr_head[0] & 1'b1) entry_valid[0] <= 1'b0;
+                    ptr_head[0] <= ptr_head[0] + 1;
 
+                    stage_pair[stage_insert] <= front_pair[0];
+                end else begin
+                    front_pair[1] <= back_pair[1];
+                    back_pair[1]  <= -1;
+
+                    if (ptr_head[1] & 1'b1) entry_valid[1] <= 1'b0;
+
+                    ptr_head[1] <= ptr_head[1] + 1;
+                    stage_pair[stage_insert] <= front_pair[1];
+                end
+                
+                if (stage_insert) write_en_out <= 1'b1;
+                stage_insert <= ~stage_insert;
             end
         end
     end
