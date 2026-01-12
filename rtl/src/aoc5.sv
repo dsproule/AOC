@@ -111,9 +111,11 @@ module top (
     logic [`BANK_ADDR_WIDTH-1:0] sort_pong_addr;
     tuple_pair_t sort_even_data_pong, sort_odd_data_pong;
 
+    int stream_len;
+
     sort_phase sort_phase_inst (
         .clock(clock), .reset(reset), 
-        .en_in(sort_en),
+        .en_in(sort_en), .stream_len_in(stream_len),
         
         // ping data 
         .even_data_in(even_data_out_pingpong[PING]), .odd_data_in(odd_data_out_pingpong[PING]),
@@ -132,7 +134,7 @@ module top (
 
     merge_phase merge_phase_inst (
         .clock(clock), .reset(reset), 
-        .en_in(phase_merge_en),
+        .en_in(phase_merge_en), .stream_len_in(stream_len),
 
         // read path
         .even_data_in(merge_even_in_data), .odd_data_in(merge_odd_in_data),
@@ -156,6 +158,12 @@ module top (
                 DATA_SORT: if (sort_done) phase_state <= DATA_MERGE;
             endcase
         end
+    end
+
+    // simple counter to get the overall stream length. 
+    always_ff @(posedge clock) begin
+        if      (reset) stream_len <= '0;
+        else if (phase_state == DATA_INIT && !stream_done_in)  stream_len <= stream_len + 2;
     end
 
 endmodule

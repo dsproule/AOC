@@ -1,6 +1,7 @@
 module merge_phase(
     input logic clock, reset, 
     input logic en_in,
+    input int stream_len_in,
 
     // read path
     input  tuple_pair_t even_data_in, odd_data_in,
@@ -20,15 +21,15 @@ module merge_phase(
     int merge_width;
     
     logic [1:0] ptr_done;
-    logic [`BANK_ADDR_WIDTH-1:0] ptr_head [2], ptr_end [2];
+    logic [`BANK_ADDR_WIDTH-1:0] ptr_head [2], ptr_end [2], next_ptr_end [2];
     
     logic [`BANK_ADDR_WIDTH-1:0] ptr_head_0_dbg, ptr_head_1_dbg;
     logic [`BANK_ADDR_WIDTH-1:0] ptr_end_0_dbg, ptr_end_1_dbg;
     
     assign ptr_head_0_dbg = ptr_head[0];
     assign ptr_head_1_dbg = ptr_head[1];
-    // assign ptr_end_0_dbg = ptr_end[0];
-    // assign ptr_end_1_dbg = ptr_end[1];
+    assign ptr_end_0_dbg = ptr_end[0];
+    assign ptr_end_1_dbg = ptr_end[1];
 
     assign ptr_done[0] = (ptr_head[0] >= ptr_end[0]);
     assign ptr_done[1] = (ptr_head[1] >= ptr_end[1]);
@@ -60,6 +61,9 @@ module merge_phase(
             end
         end 
     end
+
+    assign next_ptr_end[0] = ptr_head[0] + (merge_width << 1);
+    assign next_ptr_end[1] = ptr_head[0] + (merge_width << 1) + merge_width;
 
     always_ff @(posedge clock) begin
         if (reset) begin
@@ -101,6 +105,15 @@ module merge_phase(
 
             write_en_out <= 1'b0;
             if (write_en_out) write_addr_out <= write_addr_out + 2;
+
+            if (&ptr_done) begin
+                
+                entry_valid <= '0; 
+                ptr_head[0] <= ptr_head[0] + merge_width;
+                ptr_head[1] <= ptr_head[0] + (merge_width << 1);
+                ptr_end[0]  <= (next_ptr_end[0] > stream_len_in) ? stream_len_in : next_ptr_end[0];
+                ptr_end[1]  <= (next_ptr_end[1] > stream_len_in) ? stream_len_in : next_ptr_end[1];
+            end
 
             // perform the merge
             if ((&entry_valid || (|entry_valid && |ptr_done)) && !merge_width_done) begin

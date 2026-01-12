@@ -199,11 +199,11 @@ module aoc5_tb;
         stream_done_in = 0;
         @(posedge dut.sort_done)
         // print_pong(2);
-        repeat (80) @(negedge clock);
+        repeat (450) @(negedge clock);
         
         // print_mem;
         // print_merge_regs;
-        print_ping(32);
+        print_ping(200);
         $display("Done loading data");
         $fclose(fd);
         $finish;

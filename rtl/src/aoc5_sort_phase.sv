@@ -4,6 +4,7 @@
 module sort_phase (
     input logic clock, reset, 
     input logic en_in,
+    input int stream_len_in,
 
     // ping memory
     input  tuple_pair_t even_data_in, odd_data_in,
@@ -21,7 +22,6 @@ module sort_phase (
     logic [`ARR_16_FLAT_WIDTH-1:0] sort_16_pairs_in_flat, sort_16_pairs_out_flat;
     logic sort_16_out_valid, sort_acc;
 
-    int stream_len;
     logic sort_16_in_valid;
 
     bitonic_sort_16 sort_16 (
@@ -43,7 +43,7 @@ module sort_phase (
     end
 
     logic final_sort_valid;
-    assign ping_read_en = (en_in && ping_addr_out <= stream_len && !sort_16_in_valid);
+    assign ping_read_en = (en_in && ping_addr_out <= stream_len_in && !sort_16_in_valid);
 
     logic init_delay;
     // handles the cycling for loading regs for sort
@@ -67,7 +67,7 @@ module sort_phase (
                     sort_16_in_valid  <= 1'b1;
                     sort_stage_parity <= parity_clock;
                 end
-            end else if (ping_addr_out >= stream_len && !final_sort_valid) begin
+            end else if (ping_addr_out >= stream_len_in && !final_sort_valid) begin
                 ping_addr_out <= ping_addr_out + 1;
                 if ((ping_addr_out & 4'hF) == '0) begin
                     sort_16_in_valid  <= 1'b1;
@@ -102,7 +102,7 @@ module sort_phase (
 
     assign pong_write_en = (merge_regs_cnt < 16) && en_in;
     
-    assign phase_done_out = (mem_write_i > stream_len);
+    assign phase_done_out = (mem_write_i > stream_len_in);
     
     // writeback control
     assign pong_addr_out = mem_write_i + merge_regs_cnt;
@@ -110,9 +110,9 @@ module sort_phase (
     assign odd_data_out  = `index_flat(merge_regs_flat, 1);
 
     // simple counter to get the overall stream length. 
-    always_ff @(posedge clock) begin
-        if      (reset)            stream_len <= '0;
-        else if (!en_in)  stream_len <= stream_len + 2;
-    end
+    // always_ff @(posedge clock) begin
+    //     if      (reset)            stream_len <= '0;
+    //     else if (!en_in)  stream_len <= stream_len + 2;
+    // end
 
 endmodule
