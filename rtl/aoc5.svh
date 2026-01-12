@@ -45,6 +45,5 @@ endfunction
 
 // iverilog simulator disallows defining these in modules
 typedef enum logic [1:0] {DATA_INIT, DATA_SORT, DATA_MERGE, DATA_INTVS} phase_t;
-typedef enum logic [1:0] {MERGE_FRONT_0_MIN, MERGE_FRONT_1_MIN, MERGE_0, MERGE_1 } merge_t;
 
 `endif

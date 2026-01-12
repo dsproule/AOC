@@ -47,13 +47,13 @@ module aoc5_tb;
     //         $display("\n");
     //     end
 
-        if (&dut.merge_phase_inst.entry_valid && dut.merge_phase_inst.en_in && 0) begin
-            // $write("\nmem_i(%0b): ", dut.sort_16_out_valid);
+        if (dut.merge_phase_inst.en_in && 1) begin
             tuple_pair_t tmp_pair;
             tmp_pair = dut.merge_phase_inst.front_pair[0];
             $write("front: (%0d, %0d) ", tmp_pair.first, tmp_pair.second);
             tmp_pair = dut.merge_phase_inst.front_pair[1];
-            $write("(%0d, %0d)\n", tmp_pair.first, tmp_pair.second);
+            $write("(%0d, %0d)\t", tmp_pair.first, tmp_pair.second);
+            $write("%0b\t\n", dut.merge_phase_inst.ptr_done);
             tmp_pair = dut.merge_phase_inst.back_pair[0];
             $write("back: (%0d, %0d) ", tmp_pair.first, tmp_pair.second);
             tmp_pair = dut.merge_phase_inst.back_pair[1];
@@ -203,7 +203,7 @@ module aoc5_tb;
         
         // print_mem;
         // print_merge_regs;
-        print_ping(30);
+        // print_ping(32);
         $display("Done loading data");
         $fclose(fd);
         $finish;
