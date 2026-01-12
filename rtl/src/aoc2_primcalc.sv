@@ -40,6 +40,7 @@ module prim_calc(
     logic [`DATA_WIDTH-1:0] S_next, N_next, BM_next, M_next, S, N, BM, M;
     logic [`DATA_WIDTH-1:0] PS_next, PS;
 
+    // computes bounds
     always_comb begin
         lb_r_next = (r == 1) ? 1 : base10;
         ub_r_next = ub_in / rep_base;

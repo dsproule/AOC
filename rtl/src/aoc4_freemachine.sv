@@ -21,6 +21,7 @@ module freemachine #(
 
     assign done_out = done_out_buf && !write_en_out;
     
+    // used for ease of use in waveform viewers
     logic [`GRID_VEC_ALIGN_N-1:0] regs_dbg_0;
     logic [`GRID_VEC_ALIGN_N-1:0] regs_dbg_1;
     logic [`GRID_VEC_ALIGN_N-1:0] regs_dbg_2;
@@ -34,7 +35,7 @@ module freemachine #(
 
     assign last_row = (row_addr_out_buf == end_row);
 
-    // accumulation 
+    // accumulation and circular shift logic
     always_comb begin
         degree = regs[0][0] + regs[0][1] + regs[0][2]
                         + regs[1][0] +             regs[1][2]
@@ -75,7 +76,9 @@ module freemachine #(
                 insert_reg   <= 1;
             end
         end else if (write_en_out) begin
+            // stall
         end else if (ack_in && !regs_valid) begin
+            // if a register ever frees up, this loads the value back from memory in TX_DATA_WIDTH chunks
             regs[insert_reg][`VEC_OFFSET(col_addr_out) +: `TX_DATA_WIDTH] <= partial_vec_in;
 
             if (col_addr_out + `TX_DATA_WIDTH >= `GRID_VEC_ALIGN_N || last_row) begin
@@ -115,11 +118,11 @@ module freemachine #(
             end else row_addr_out_buf <= start_row - 1;
 
         end else if (write_en_out) begin
+            // note this is the stall location
             if (ack_in) begin
                 store_parity[1] <= ~store_parity[1];
                 col_addr_out <= col_i;
             end
-            // used to block execution of system
         end else if (ack_in && !regs_valid) begin
             // save chunks until end of line. latency-insensitive design,
             // helps contention of mem if each can be stalled
@@ -140,6 +143,7 @@ module freemachine #(
                 changed_out <= 1'b1;
             end
             
+            // keeps track of where we're at in the circular regs
             if (col_i == `GRID_VEC_ALIGN_N - 1) begin
                 if (last_row)
                     done_out_buf <= 1'b1;

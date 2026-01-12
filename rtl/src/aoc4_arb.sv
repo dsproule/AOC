@@ -1,3 +1,4 @@
+// arbitrates by using lock-semantics
 module arb(
     input  logic clock, reset,
     input  logic ack_in,

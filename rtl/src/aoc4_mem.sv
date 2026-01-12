@@ -1,7 +1,7 @@
 `include "common.svh"
 `include "aoc4.svh"
 
-// memory controller used to control single bank. `MACH_N banks exist
+// memory controller shared across all machines. Semantics similar to a cache
 module mem (
     input logic clock, reset,
     input logic write_en, read_en, pad_en, 

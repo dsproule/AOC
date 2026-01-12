@@ -12,7 +12,7 @@ module long_stack #(
 
     logic [`DATA_WIDTH-1:0] data [MAX_CAP];
 
-    // Signal updates ---------------    
+    // Signal updates
     logic [$clog2(MAX_CAP):0] sp, next_sp;
 
     logic full;
@@ -21,7 +21,7 @@ module long_stack #(
 
     assign next_sp = (data_in_valid && !full) ? sp + 1 : sp;
     
-    // long-pop logic ---------------
+    // long-pop logic. builds a map that we can perform bitwise ops on
     logic [MAX_CAP-1:0] less_than, less_than_suf, forward_cand;
     logic [$clog2(MAX_CAP):0] insert_i, forward_i;
 

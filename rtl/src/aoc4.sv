@@ -73,6 +73,7 @@ module top(
         end 
     endgenerate
 
+    // if there is a change -> redeploy all machines
     int add_i;
     logic run_started, final_sum;
     always_ff @(posedge clock) begin

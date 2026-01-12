@@ -15,6 +15,7 @@ module splitter #(
 
     int rot_i;
     int i;
+    // circular shift reg moves value around and updates in-place if collision
     always_ff @(posedge clock) begin
         if (reset) begin
             for (rot_i = 0; rot_i < LINE_LENGTH; rot_i++)
