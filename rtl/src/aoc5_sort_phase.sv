@@ -7,13 +7,15 @@ module sort_phase (
 
     // ping memory
     input  tuple_pair_t even_data_in, odd_data_in,
-    output int   ping_addr_out,
+    output logic [`BANK_ADDR_WIDTH-1:0] ping_addr_out,
     output logic ping_read_en,
 
     // pong memory
     output logic [`BANK_ADDR_WIDTH-1:0] pong_addr_out,
     output tuple_pair_t even_data_out, odd_data_out,
-    output logic pong_write_en
+    output logic pong_write_en,
+
+    output logic phase_done_out
 
 );
     logic [`ARR_16_FLAT_WIDTH-1:0] sort_16_pairs_in_flat, sort_16_pairs_out_flat;
@@ -94,7 +96,9 @@ module sort_phase (
         end
     end
 
-    assign pong_write_en = (merge_regs_cnt < 16);
+    assign pong_write_en = (merge_regs_cnt < 16) && en_in;
+    
+    assign phase_done_out = (mem_write_i > stream_len);
     
     // writeback control
     assign pong_addr_out = mem_write_i + merge_regs_cnt;

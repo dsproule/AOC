@@ -4,7 +4,7 @@
 module aoc5_tb;
     logic clock, reset, data_valid_in, stream_done_in;
     logic [`BANK_ADDR_WIDTH-1:0] tb_addr_in;
-    tuple_pair_t even_data_in, odd_data_in;
+    tuple_pair_t tb_even_data_in, tb_odd_data_in;
     
     top dut(.*);
     
@@ -167,12 +167,12 @@ module aoc5_tb;
                 while (c != 10 && c != -1) c = $fgetc(fd);
                 
                 // Pack into tuple_pair_t structures
-                even_data_in.first  = nums[0];
-                even_data_in.second = nums[1];
-                odd_data_in.first   = nums[2];
-                odd_data_in.second  = nums[3];
-                // $display("%0d-%0d", even_data_in.first, even_data_in.second);
-                // $display("%0d-%0d", odd_data_in.first, odd_data_in.second);
+                tb_even_data_in.first  = nums[0];
+                tb_even_data_in.second = nums[1];
+                tb_odd_data_in.first   = nums[2];
+                tb_odd_data_in.second  = nums[3];
+                // $display("%0d-%0d", tb_even_data_in.first, tb_even_data_in.second);
+                // $display("%0d-%0d", tb_odd_data_in.first, tb_odd_data_in.second);
                 
                 // Assert valid and wait
                 data_valid_in = 1'b1;
@@ -183,6 +183,8 @@ module aoc5_tb;
             end 
         end
         stream_done_in = 1;
+        @(negedge clock);
+        stream_done_in = 0;
         repeat (200) @(negedge clock);
         
         // print_mem;
