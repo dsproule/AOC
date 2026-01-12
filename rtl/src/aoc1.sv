@@ -23,6 +23,7 @@ module lock_over_zero(
         zeros_inc = full_rots;
         if (dir == LEFT) begin
             
+            // handles negatives
             if (rot_mod > cur_pos) begin
                 zeros_inc = full_rots + (cur_pos != '0);
                 next_pos = lock_max + (cur_pos - rot_mod);
@@ -30,6 +31,7 @@ module lock_over_zero(
 
         end else begin
             
+            // handles positive overflows
             if (cur_pos + rot_mod > lock_max)
                 zeros_inc = full_rots + `DATA_WIDTH'(1);
             next_pos = (cur_pos + rot_mod) % lock_max;

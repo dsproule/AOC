@@ -1,5 +1,6 @@
 `include "common.svh"
 
+// module used to remove duplicates from series calculation
 module prim_calc(
     input logic clock, reset, cur_base_valid, input_valid,
     input logic [`DATA_WIDTH-1:0] cur_base_in, block_size_in, ub_in,
@@ -22,6 +23,7 @@ module prim_calc(
     assign k_bound = (r == 1) ? block_size_in : block_size_in >> 1;
     assign base10 =  pow10((k <= k_bound && cur_base_valid) ? k * r : r - 1);
 
+    // calculates the base template
     always_ff @(posedge clock) begin
         if (reset || !input_valid) begin
             rep_base <= '0;
@@ -50,6 +52,7 @@ module prim_calc(
         PS_next = (ub_r >= lb_r) ? BM * M : '0;
     end
 
+    // commits the values
     int unsigned prim_sub_cycles;
     always_ff @(posedge clock) begin
         if (reset || !input_valid) begin

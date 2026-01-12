@@ -187,7 +187,7 @@ module aoc5_tb;
         
         // print_mem;
         // print_merge_regs;
-        print_pong(200);
+        print_pong(205);
         $display("Done loading data");
         $fclose(fd);
         $finish;

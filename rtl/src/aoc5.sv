@@ -49,7 +49,7 @@ module top (
 
     logic final_sort_valid;
     logic mem_load_valid;
-    assign mem_load_valid = (stream_done_in && mem_load_i < stream_len && !sort_16_in_valid);
+    assign mem_load_valid = (stream_done_in && mem_load_i <= stream_len && !sort_16_in_valid);
 
     // handles the cycling for loading regs for sort
     always_ff @(posedge clock) begin
@@ -57,21 +57,29 @@ module top (
             mem_load_i        <= '0;
             sort_16_in_valid <= 1'b0;
             final_sort_valid <= 1'b0;
-        end else if (mem_load_valid) begin
-            mem_load_i <= mem_load_i + 2;
+        end else if (stream_done_in) begin
+            if (mem_load_valid) begin
+                mem_load_i <= mem_load_i + 2;
 
-            `index_flat(sort_16_pairs_in_flat, insert_i)     <= even_data_out[PING];
-            `index_flat(sort_16_pairs_in_flat, insert_i + 1) <= odd_data_out[PING];
+                `index_flat(sort_16_pairs_in_flat, insert_i)     <= even_data_out[PING];
+                `index_flat(sort_16_pairs_in_flat, insert_i + 1) <= odd_data_out[PING];
 
-            // if mod_6 -> latch parity
-            if (((mem_load_i & 4'hF) == '0 && mem_load_i != '0) || mem_load_i == stream_len) begin
-                sort_16_in_valid  <= 1'b1;
-                sort_stage_parity <= parity_clock;
+                // if mod_6 -> latch parity
+                if ((mem_load_i & 4'hF) == '0 && mem_load_i != '0) begin
+                    sort_16_in_valid  <= 1'b1;
+                    sort_stage_parity <= parity_clock;
+                end
+            end else if (mem_load_i >= stream_len && !final_sort_valid) begin
+                mem_load_i <= mem_load_i + 1;
+                if ((mem_load_i & 4'hF) == '0) begin
+                    sort_16_in_valid  <= 1'b1;
+                    sort_stage_parity <= parity_clock;
+                    final_sort_valid <= 1'b1;
+                end
+            end else if (parity_clock == sort_stage_parity) begin
+                sort_16_pairs_in_flat <=  '0 - 1;
+                sort_16_in_valid <= 1'b0;
             end
-
-        end else if (parity_clock == sort_stage_parity) begin
-            sort_16_pairs_in_flat <=  '0 - 1;
-            sort_16_in_valid <= 1'b0;
         end
     end
 
