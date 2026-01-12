@@ -13,7 +13,7 @@ module top (
 
     logic [`BANK_ADDR_WIDTH-1:0] sort_ping_addr;
     logic read_en_pingpong [2], write_en_pingpong [2];
-    logic [1:0] phase_state;
+    phase_t phase_state;
 
     logic [`BANK_ADDR_WIDTH-1:0] row_addr_pingpong [2];
     tuple_pair_t even_data_in_pingpong [2], odd_data_in_pingpong [2];
@@ -32,7 +32,7 @@ module top (
         {read_en_pingpong[PONG], read_en_pingpong[PING]}           = '0;
         
         case (phase_state)
-            `DATA_INIT: begin
+            DATA_INIT: begin
                 // addressing
                 row_addr_pingpong[PING] = tb_addr_in;
 
@@ -43,7 +43,7 @@ module top (
                 write_en_pingpong[PING] = data_valid_in;
             end
             
-            `DATA_SORT: begin
+            DATA_SORT: begin
                 // addressing
                 row_addr_pingpong[PING] = sort_ping_addr;
                 row_addr_pingpong[PONG] = sort_pong_addr;
@@ -56,14 +56,14 @@ module top (
                 read_en_pingpong[PING] = sort_read_en;
             end
             
-            `DATA_MERGE: begin
+            DATA_MERGE: begin
                 // looks much scarier than it is. Just need to swap all connections for read/write
                 // based on whether we want ping or pong.
                 if (pingpong) begin
                     row_addr_pingpong[PING] = merge_read_addr;
                      read_en_pingpong[PING] = merge_read_en;
-                     merge_odd_in_data      = even_data_out_pingpong[PING];
-                    merge_even_in_data      = odd_data_out_pingpong[PING];
+                     merge_odd_in_data      = odd_data_out_pingpong[PING];
+                    merge_even_in_data      = even_data_out_pingpong[PING];
                     
                     row_addr_pingpong[PONG] = merge_write_addr;
                     write_en_pingpong[PONG] = merge_write_en;
@@ -72,8 +72,8 @@ module top (
                 end else begin
                     row_addr_pingpong[PONG] = merge_read_addr;
                      read_en_pingpong[PONG] = merge_read_en;
-                     merge_odd_in_data      = even_data_out_pingpong[PONG];
-                    merge_even_in_data      = odd_data_out_pingpong[PONG];
+                     merge_odd_in_data      = odd_data_out_pingpong[PONG];
+                    merge_even_in_data      = even_data_out_pingpong[PONG];
 
                     row_addr_pingpong[PING] = merge_write_addr;
                     write_en_pingpong[PING] = merge_write_en;
@@ -105,8 +105,8 @@ module top (
     logic sort_done, sort_read_en, sort_write_en;
     logic sort_en, phase_merge_en;
 
-    assign sort_en = (`current_state(`DATA_SORT)) || stream_done_in;
-    assign phase_merge_en = (`current_state(`DATA_MERGE));
+    assign sort_en = (`current_state(DATA_SORT)) || stream_done_in;
+    assign phase_merge_en = (`current_state(DATA_MERGE));
 
     logic [`BANK_ADDR_WIDTH-1:0] sort_pong_addr;
     tuple_pair_t sort_even_data_pong, sort_odd_data_pong;
@@ -149,11 +149,11 @@ module top (
 
     always_ff @(posedge clock) begin
         if (reset) begin
-            phase_state <= `DATA_INIT;
+            phase_state <= DATA_INIT;
         end else begin
             case (phase_state)
-                `DATA_INIT: if (stream_done_in)  phase_state <= `DATA_SORT;
-                `DATA_SORT: if (sort_done) phase_state <= `DATA_MERGE;
+                DATA_INIT: if (stream_done_in)  phase_state <= DATA_SORT;
+                DATA_SORT: if (sort_done) phase_state <= DATA_MERGE;
             endcase
         end
     end

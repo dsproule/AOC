@@ -15,16 +15,16 @@ module aoc5_tb;
         $dumpvars(0, aoc5_tb);
     end
 
-    // always_ff @(posedge dut.sort_16_in_valid) begin
-        // $write("\npairs_in(%0b): ", dut.sort_16_in_valid);
+    always_ff @(posedge dut.sort_phase_inst.sort_16_in_valid) begin
+        // $write("\npairs_in(%0b): ", dut.sort_phase_inst.sort_16_in_valid);
         //     for (int i = 0; i < 16; i++) begin
         //         tuple_pair_t tmp_pair;
-        //         tmp_pair = `index_flat(dut.sort_16_pairs_in_flat, i);
+        //         tmp_pair = `index_flat(dut.sort_phase_inst.sort_16_pairs_in_flat, i);
 
         //         $write("(%0d, %0d) ", tmp_pair.first, tmp_pair.second);
         //     end
         // $display("\n");
-    // end
+    end
 
     always_ff @(posedge clock) begin
     //     if (dut.sort_16.bitonics_ready == 2'b11) begin
@@ -47,10 +47,22 @@ module aoc5_tb;
     //         $display("\n");
     //     end
 
+        if (&dut.merge_phase_inst.entry_valid && dut.merge_phase_inst.en_in && 0) begin
+            // $write("\nmem_i(%0b): ", dut.sort_16_out_valid);
+            tuple_pair_t tmp_pair;
+            tmp_pair = dut.merge_phase_inst.front_pair[0];
+            $write("front: (%0d, %0d) ", tmp_pair.first, tmp_pair.second);
+            tmp_pair = dut.merge_phase_inst.front_pair[1];
+            $write("(%0d, %0d)\n", tmp_pair.first, tmp_pair.second);
+            tmp_pair = dut.merge_phase_inst.back_pair[0];
+            $write("back: (%0d, %0d) ", tmp_pair.first, tmp_pair.second);
+            tmp_pair = dut.merge_phase_inst.back_pair[1];
+            $write("(%0d, %0d)\n\n", tmp_pair.first, tmp_pair.second);
+
+        end
+
         // if (dut.sort_16_out_valid) begin
-        //     $write("\npairs_out(%0b): ", dut.sort_16_out_valid);
         //         for (int i = 0; i < 16; i++) begin
-        //             tuple_pair_t tmp_pair;
         //             tmp_pair = `index_flat(dut.sort_16_pairs_out_flat, i);
 
         //             $write("(%0d, %0d) ", tmp_pair.first, tmp_pair.second);
@@ -59,13 +71,13 @@ module aoc5_tb;
         // end
     end
 
-    task print_ping;
+    task print_ping(input int print_depth);
         tuple_pair_t pair;
-        for (int i = 0; i < (`BANK_DEPTH); i = i + 2) begin
+        for (int i = 0; i < print_depth; i = i + 2) begin
             pair = dut.mem_ping.bank_even.mem[i];
-            $display("%0d-%0d", pair.first, pair.second);
+            $display("%3d: %0d-%0d", i, pair.first, pair.second);
             pair = dut.mem_ping.bank_odd.mem[i];
-            $display("%0d-%0d", pair.first, pair.second);
+            $display("%3d: %0d-%0d", i + 1, pair.first, pair.second);
         end
     endtask
     
@@ -80,18 +92,18 @@ module aoc5_tb;
     endtask
     
     task print_merge_regs;
-        // tuple_pair_t pair;
-        // pair = dut.write_back_regs[0];
-        // $display("reg[0]: %0d-%0d", pair.first, pair.second);
-        // pair = dut.write_back_regs[1];
-        // $display("reg[1]: %0d-%0d\n", pair.first, pair.second);
+        tuple_pair_t pair;
+        pair = dut.merge_phase_inst.front_pair[0];
+        $display("reg[0]: %0d-%0d", pair.first, pair.second);
+        pair = dut.merge_phase_inst.back_pair[0];
+        $display("reg[1]: %0d-%0d\n", pair.first, pair.second);
     endtask
 
-    always_ff @(posedge clock) begin
+    // always_ff @(posedge clock) begin
         // if (dut.write_back_valid) begin
             // print_merge_regs;
         // end
-    end 
+    // end 
     
     int fd;
     int c;
@@ -185,12 +197,13 @@ module aoc5_tb;
         stream_done_in = 1;
         @(negedge clock);
         stream_done_in = 0;
-        repeat (200) @(negedge clock);
+        @(posedge dut.sort_done)
+        // print_pong(2);
+        repeat (70) @(negedge clock);
         
         // print_mem;
         // print_merge_regs;
-        print_pong(205);
-        // print_ping;
+        print_ping(30);
         $display("Done loading data");
         $fclose(fd);
         $finish;

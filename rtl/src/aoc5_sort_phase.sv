@@ -45,15 +45,19 @@ module sort_phase (
     logic final_sort_valid;
     assign ping_read_en = (en_in && ping_addr_out <= stream_len && !sort_16_in_valid);
 
+    logic init_delay;
     // handles the cycling for loading regs for sort
     always_ff @(posedge clock) begin
         if (reset) begin
             ping_addr_out        <= '0;
             sort_16_in_valid <= 1'b0;
             final_sort_valid <= 1'b0;
+            init_delay       <= 1'b1;
         end else if (en_in) begin
+            init_delay <= 1'b0;
+
             if (ping_read_en) begin
-                ping_addr_out <= ping_addr_out + 2;
+                if (!init_delay) ping_addr_out <= ping_addr_out + 2;
 
                 `index_flat(sort_16_pairs_in_flat, insert_i)     <= even_data_in;
                 `index_flat(sort_16_pairs_in_flat, insert_i + 1) <= odd_data_in;
