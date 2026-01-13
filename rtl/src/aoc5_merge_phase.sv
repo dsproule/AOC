@@ -81,6 +81,8 @@ module merge_phase(
             write_addr_out   <= '0;
             read_valid       <=  3;
             stage_insert     <= 1'b0;
+            phase_done_out   <= 1'b0;
+        end else if (phase_done_out) begin
         end else if (en_in) begin
             write_en_out <= 1'b0;
             if (write_en_out) write_addr_out <= write_addr_out + 2;
@@ -89,6 +91,11 @@ module merge_phase(
                 if (ptr_head[0] >= stream_len_in || ptr_head[1] >= stream_len_in) begin
                     merge_width_done <= 1'b1; 
                     write_addr_out   <= '0;
+                end
+                if ((merge_width << 1) >= stream_len_in) begin
+                    phase_done_out   <= 1'b1;
+                    pingpong         <= ~pingpong;
+                    merge_width_done <= 1'b0;
                 end
                 entry_valid <= '0; 
                 ptr_head[0] <= ptr_head[0] + merge_width;

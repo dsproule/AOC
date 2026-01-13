@@ -3,7 +3,7 @@
 
 module sort_phase (
     input logic clock, reset, 
-    input logic en_in,
+    input logic en_in, parity_clock_in,
     input int stream_len_in,
 
     // ping memory
@@ -36,13 +36,7 @@ module sort_phase (
     logic [3:0] insert_i;
     assign insert_i = (ping_addr_out - 2) & 4'hF;
 
-    logic parity_clock, sort_stage_parity;
-    always_ff @(posedge clock) begin
-        if (reset) parity_clock <= '0;
-        else parity_clock <= ~parity_clock;
-    end
-
-    logic final_sort_valid;
+    logic final_sort_valid, sort_stage_parity;
     assign ping_read_en = (en_in && ping_addr_out <= stream_len_in && !sort_16_in_valid);
 
     logic init_delay;
@@ -65,16 +59,16 @@ module sort_phase (
                 // if mod_6 -> latch parity
                 if ((ping_addr_out & 4'hF) == '0 && ping_addr_out != '0) begin
                     sort_16_in_valid  <= 1'b1;
-                    sort_stage_parity <= parity_clock;
+                    sort_stage_parity <= parity_clock_in;
                 end
             end else if (ping_addr_out >= stream_len_in && !final_sort_valid) begin
                 ping_addr_out <= ping_addr_out + 1;
                 if ((ping_addr_out & 4'hF) == '0) begin
                     sort_16_in_valid  <= 1'b1;
-                    sort_stage_parity <= parity_clock;
+                    sort_stage_parity <= parity_clock_in;
                     final_sort_valid <= 1'b1;
                 end
-            end else if (parity_clock == sort_stage_parity) begin
+            end else if (parity_clock_in == sort_stage_parity) begin
                 sort_16_pairs_in_flat <=  '0 - 1;
                 sort_16_in_valid <= 1'b0;
             end

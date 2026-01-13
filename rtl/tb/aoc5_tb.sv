@@ -198,22 +198,22 @@ module aoc5_tb;
         @(negedge clock);
         stream_done_in = 0;
         @(posedge dut.sort_done)
-        @(negedge dut.merge_phase_inst.merge_width_done);
+        // @(negedge dut.merge_phase_inst.merge_width_done);
         // sorted 16
         // first real cycle
-        @(negedge dut.merge_phase_inst.merge_width_done);
+        // @(negedge dut.merge_phase_inst.merge_width_done);
         // sorted 32
         // print_ping(200);
-        @(negedge dut.merge_phase_inst.merge_width_done);
+        // @(negedge dut.merge_phase_inst.merge_width_done);
         // sorted 64
         // print_pong(200);
-        @(negedge dut.merge_phase_inst.merge_width_done);
+        // @(negedge dut.merge_phase_inst.merge_width_done);
         // sorted 128
         // print_ping(200);
-        @(negedge dut.merge_phase_inst.merge_width_done);
-        print_pong(200);
         // @(negedge dut.merge_phase_inst.merge_width_done);
-        // repeat (450) @(negedge clock);
+        @(posedge dut.merge_done);
+        print_pong(190);
+        repeat (30) @(negedge clock);
         
         // print_mem;
         // print_merge_regs;
