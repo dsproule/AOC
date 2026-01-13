@@ -79,6 +79,15 @@ module aoc4_tb;
         end
     end
 
+    logic dut_run; 
+    assign dut_run = dut.run_in | dut.re_run;
+    
+    int run_count;
+    always_ff @(posedge dut_run) begin
+        if (reset) run_count <= '0;
+        else       run_count <= run_count + 1;
+    end
+
     initial begin
         fd = $fopen("input4.txt", "r");
         if (fd == 0) $fatal(1, "ERROR: Could not open input4.txt");
