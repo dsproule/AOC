@@ -5,7 +5,10 @@ module top (
     input logic clock, reset, 
     input logic data_valid_in, stream_done_in,
     input logic [`BANK_ADDR_WIDTH-1:0] tb_addr_in,
-    input tuple_pair_t tb_even_data_in, tb_odd_data_in
+    input tuple_pair_t tb_even_data_in, tb_odd_data_in,
+
+    output logic done_out,
+    output longint final_sum_out
 );
     `define current_state(PHASE) (phase_state == PHASE)
 
@@ -128,6 +131,9 @@ module top (
     assign sort_en  = `current_state(DATA_SORT) || stream_done_in;
     assign merge_en = `current_state(DATA_MERGE);
     assign intv_en  = `current_state(DATA_INTVS);
+    
+    assign done_out = `current_state(DATA_DONE);
+    // assign final_sum_out = 
 
     logic [`BANK_ADDR_WIDTH-1:0] sort_pong_addr;
     tuple_pair_t sort_even_data_pong, sort_odd_data_pong;
@@ -171,18 +177,21 @@ module top (
         .phase_done_out(merge_done), .pingpong(pingpong)
     );
 
-    logic intv_read_en;
+    logic intv_read_en, intv_done;
     tuple_pair_t intv_even_in_data, intv_odd_in_data;
 
     intv_phase intv_phase_inst (
         .clock(clock), .reset(reset), 
-        .en_in(sort_en), .stream_len_in(stream_len),
+        .en_in(intv_en), .stream_len_in(stream_len),
         .parity_clock_in(parity_clock),
 
         // ping memory
         .even_data_in(intv_even_in_data), .odd_data_in(intv_odd_in_data),
         .read_addr_out(intv_read_addr),
-        .read_en_out(intv_read_en)
+        .read_en_out(intv_read_en),
+
+        .phase_done_out(intv_done),
+        .final_sum_out(final_sum_out)
     );
 
     always_ff @(posedge clock) begin
@@ -193,6 +202,7 @@ module top (
                 DATA_INIT:  if (stream_done_in) phase_state <= DATA_SORT;
                 DATA_SORT:  if (sort_done)      phase_state <= DATA_MERGE;
                 DATA_MERGE: if (merge_done)     phase_state <= DATA_INTVS;
+                DATA_INTVS: if (intv_done)      phase_state <= DATA_DONE;
             endcase
         end
     end

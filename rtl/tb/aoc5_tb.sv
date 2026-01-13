@@ -2,7 +2,8 @@
 `include "aoc5.svh"
 
 module aoc5_tb;
-    logic clock, reset, data_valid_in, stream_done_in;
+    logic clock, reset, data_valid_in, stream_done_in, done_out;
+    longint final_sum_out;
     logic [`BANK_ADDR_WIDTH-1:0] tb_addr_in;
     tuple_pair_t tb_even_data_in, tb_odd_data_in;
     
@@ -13,62 +14,6 @@ module aoc5_tb;
     initial begin
         $dumpfile("aoc.vcd");
         $dumpvars(0, aoc5_tb);
-    end
-
-    always_ff @(posedge dut.sort_phase_inst.sort_16_in_valid) begin
-        // $write("\npairs_in(%0b): ", dut.sort_phase_inst.sort_16_in_valid);
-        //     for (int i = 0; i < 16; i++) begin
-        //         tuple_pair_t tmp_pair;
-        //         tmp_pair = `index_flat(dut.sort_phase_inst.sort_16_pairs_in_flat, i);
-
-        //         $write("(%0d, %0d) ", tmp_pair.first, tmp_pair.second);
-        //     end
-        // $display("\n");
-    end
-
-    always_ff @(posedge clock) begin
-    //     if (dut.sort_16.bitonics_ready == 2'b11) begin
-    //         $display();
-    //         $write("top_stage: ");
-    //         for (int i = 0; i < 8; i++) begin
-    //             tuple_pair_t tmp_pair;
-    //             tmp_pair = `index_flat(dut.sort_16.top_stage, i);
-
-    //             $write("(%0d, %0d) ", tmp_pair.first, tmp_pair.second);
-    //         end
-    //         $display("");
-    //         $write("low_stage: ");
-    //         for (int i = 0; i < 8; i++) begin
-    //             tuple_pair_t tmp_pair;
-    //             tmp_pair = `index_flat(dut.sort_16.low_stage, i);
-
-    //             $write("(%0d, %0d) ", tmp_pair.first, tmp_pair.second);
-    //         end
-    //         $display("\n");
-    //     end
-
-        if (dut.merge_phase_inst.en_in && 1) begin
-            // tuple_pair_t tmp_pair;
-            // tmp_pair = dut.merge_phase_inst.front_pair[0];
-            // $write("front: (%0d, %0d) ", tmp_pair.first, tmp_pair.second);
-            // tmp_pair = dut.merge_phase_inst.front_pair[1];
-            // $write("(%0d, %0d)\t", tmp_pair.first, tmp_pair.second);
-            // $write("%0d\n", dut.merge_phase_inst.write_addr_out);
-            // tmp_pair = dut.merge_phase_inst.back_pair[0];
-            // $write("back: (%0d, %0d) ", tmp_pair.first, tmp_pair.second);
-            // tmp_pair = dut.merge_phase_inst.back_pair[1];
-            // $write("(%0d, %0d)\n\n", tmp_pair.first, tmp_pair.second);
-
-        end
-
-        // if (dut.sort_16_out_valid) begin
-        //         for (int i = 0; i < 16; i++) begin
-        //             tmp_pair = `index_flat(dut.sort_16_pairs_out_flat, i);
-
-        //             $write("(%0d, %0d) ", tmp_pair.first, tmp_pair.second);
-        //         end
-        //     $display("\n");
-        // end
     end
 
     task print_ping(input int print_depth);
@@ -90,20 +35,6 @@ module aoc5_tb;
             $display("%3d: %0d-%0d", i + 1, pair.first, pair.second);
         end
     endtask
-    
-    task print_merge_regs;
-        tuple_pair_t pair;
-        pair = dut.merge_phase_inst.front_pair[0];
-        $display("reg[0]: %0d-%0d", pair.first, pair.second);
-        pair = dut.merge_phase_inst.back_pair[0];
-        $display("reg[1]: %0d-%0d\n", pair.first, pair.second);
-    endtask
-
-    // always_ff @(posedge clock) begin
-        // if (dut.write_back_valid) begin
-            // print_merge_regs;
-        // end
-    // end 
     
     int fd;
     int c;
@@ -197,27 +128,11 @@ module aoc5_tb;
         stream_done_in = 1;
         @(negedge clock);
         stream_done_in = 0;
-        @(posedge dut.sort_done)
-        // @(negedge dut.merge_phase_inst.merge_width_done);
-        // sorted 16
-        // first real cycle
-        // @(negedge dut.merge_phase_inst.merge_width_done);
-        // sorted 32
-        // print_ping(200);
-        // @(negedge dut.merge_phase_inst.merge_width_done);
-        // sorted 64
-        // print_pong(200);
-        // @(negedge dut.merge_phase_inst.merge_width_done);
-        // sorted 128
-        // print_ping(200);
-        // @(negedge dut.merge_phase_inst.merge_width_done);
-        @(posedge dut.merge_done);
-        print_pong(190);
-        repeat (30) @(negedge clock);
+        @(posedge done_out);
+        repeat (10) @(negedge clock);
         
-        // print_mem;
-        // print_merge_regs;
-        $display("Done loading data");
+        $display("Answer is: %0d", final_sum_out);
+        $display("Correct: %0b", final_sum_out == 343143696885053);
         $fclose(fd);
         $finish;
     end

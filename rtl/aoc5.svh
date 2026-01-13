@@ -44,6 +44,6 @@ endfunction
 `define BANK_ADDR_WIDTH $clog2(`BANK_DEPTH)
 
 // iverilog simulator disallows defining these in modules
-typedef enum logic [1:0] {DATA_INIT, DATA_SORT, DATA_MERGE, DATA_INTVS} phase_t;
+typedef enum logic [2:0] {DATA_INIT, DATA_SORT, DATA_MERGE, DATA_INTVS, DATA_DONE} phase_t;
 
 `endif
