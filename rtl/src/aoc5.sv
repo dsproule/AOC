@@ -27,7 +27,7 @@ module top (
         // Different phases need to claim ownership of signals
         {row_addr_pingpong[PING], row_addr_pingpong[PONG]}         = '0;
         {even_data_in_pingpong[PING], even_data_in_pingpong[PONG]} = '0;
-        {odd_data_in_pingpong[PING], odd_data_in_pingpong[PING]}   = '0;
+        {odd_data_in_pingpong[PING], odd_data_in_pingpong[PONG]}   = '0;
         {write_en_pingpong[PONG], write_en_pingpong[PING]}         = '0;
         {read_en_pingpong[PONG], read_en_pingpong[PING]}           = '0;
         

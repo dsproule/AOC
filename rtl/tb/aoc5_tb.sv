@@ -53,7 +53,7 @@ module aoc5_tb;
             // $write("front: (%0d, %0d) ", tmp_pair.first, tmp_pair.second);
             // tmp_pair = dut.merge_phase_inst.front_pair[1];
             // $write("(%0d, %0d)\t", tmp_pair.first, tmp_pair.second);
-            // $write("%0b\t\n", dut.merge_phase_inst.ptr_done);
+            // $write("%0d\n", dut.merge_phase_inst.write_addr_out);
             // tmp_pair = dut.merge_phase_inst.back_pair[0];
             // $write("back: (%0d, %0d) ", tmp_pair.first, tmp_pair.second);
             // tmp_pair = dut.merge_phase_inst.back_pair[1];
@@ -199,13 +199,17 @@ module aoc5_tb;
         stream_done_in = 0;
         @(posedge dut.sort_done)
         @(negedge dut.merge_phase_inst.merge_width_done);
+        // sorted 16
         // first real cycle
         @(negedge dut.merge_phase_inst.merge_width_done);
+        // sorted 32
         // print_ping(200);
         @(negedge dut.merge_phase_inst.merge_width_done);
+        // sorted 64
         // print_pong(200);
         @(negedge dut.merge_phase_inst.merge_width_done);
-        print_ping(200);
+        // sorted 128
+        // print_ping(200);
         @(negedge dut.merge_phase_inst.merge_width_done);
         print_pong(200);
         // @(negedge dut.merge_phase_inst.merge_width_done);

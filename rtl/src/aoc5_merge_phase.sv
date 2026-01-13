@@ -23,6 +23,7 @@ module merge_phase(
     logic [1:0] ptr_done;
     logic [`BANK_ADDR_WIDTH-1:0] ptr_head [2], ptr_end [2];
     int next_ptr_end [2];
+    int next_ptr_end_0_dbg, next_ptr_end_1_dbg;
     
     logic [`BANK_ADDR_WIDTH-1:0] ptr_head_0_dbg, ptr_head_1_dbg;
     logic [`BANK_ADDR_WIDTH-1:0] ptr_end_0_dbg, ptr_end_1_dbg;
@@ -31,6 +32,9 @@ module merge_phase(
     assign ptr_head_1_dbg = ptr_head[1];
     assign ptr_end_0_dbg = ptr_end[0];
     assign ptr_end_1_dbg = ptr_end[1];
+
+    assign next_ptr_end_0_dbg = next_ptr_end[0];
+    assign next_ptr_end_1_dbg = next_ptr_end[1];
 
     assign ptr_done[0] = (ptr_head[0] >= ptr_end[0]);
     assign ptr_done[1] = (ptr_head[1] >= ptr_end[1]);
@@ -127,7 +131,7 @@ module merge_phase(
                 ptr_head[0]      <= '0;
                 ptr_head[1]      <= (merge_width << 1);
                 ptr_end[0]       <= (merge_width << 1);
-                ptr_end[1]       <= (merge_width << 2);
+                ptr_end[1]       <= (merge_width * 4 > stream_len_in) ? stream_len_in : (merge_width << 2);
 
                 merge_width      <= (merge_width << 1);
                 merge_width_done <= 1'b0;
