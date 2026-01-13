@@ -24,7 +24,7 @@ All designs can be ran using the *Makefile* in the root. The pattern is "make ao
 make aoc1_sv
 make aoc1_hw_cpp
 ```
-There is a script called run_all.sh that can be used to automatically deploy all implemented designs using the RTL simulator.
+There is a script called run_all.sh that can be used to automatically deploy all implemented designs using the RTL simulator. Just run **./run_all.sh**
 
 # Algorithms
 

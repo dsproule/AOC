@@ -103,10 +103,4 @@ module sort_phase (
     assign even_data_out = `index_flat(merge_regs_flat, 0);
     assign odd_data_out  = `index_flat(merge_regs_flat, 1);
 
-    // simple counter to get the overall stream length. 
-    // always_ff @(posedge clock) begin
-    //     if      (reset)            stream_len <= '0;
-    //     else if (!en_in)  stream_len <= stream_len + 2;
-    // end
-
 endmodule

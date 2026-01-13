@@ -133,7 +133,6 @@ module top (
     assign intv_en  = `current_state(DATA_INTVS);
     
     assign done_out = `current_state(DATA_DONE);
-    // assign final_sum_out = 
 
     logic [`BANK_ADDR_WIDTH-1:0] sort_pong_addr;
     tuple_pair_t sort_even_data_pong, sort_odd_data_pong;
