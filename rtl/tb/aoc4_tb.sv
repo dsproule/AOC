@@ -125,7 +125,7 @@ module aoc4_tb;
         if (col_i != 0) write_mem(partial_row_vec, row_i, (`MAX_COLS / `TX_DATA_WIDTH) * `TX_DATA_WIDTH);
         
         @(negedge clock);
-        print_mem;
+        // print_mem;
 
         // Run the machine
         run = 1;
@@ -136,7 +136,7 @@ module aoc4_tb;
         @(posedge clock);
 
         $display();
-        print_mem;
+        // print_mem;
         $display("Updates: %0d", updates);
         $display("Correct: %0b", updates == 8484);
         $display("Cycles: %0d", cycle_count);

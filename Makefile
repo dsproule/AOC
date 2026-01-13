@@ -1,5 +1,6 @@
 CXXFLAGS = -std=c++20 -O2
-VFLAGS = -g2012
+VFLAGS   = -g2012
+RTL_SIM  = iverilog
 TARGET := aoc
 
 .PHONY: all clean
@@ -22,7 +23,7 @@ aoc2_sv: rtl/src/aoc2_utils.sv rtl/src/aoc2_groupcount.sv rtl/src/aoc2_primcalc.
 
 # Simulation
 %_sv: rtl/src/%.sv rtl/tb/%_tb.sv
-	iverilog $(VFLAGS) -I ./rtl $^ -o inputs/aoc && cd inputs && ./aoc && rm aoc
+	$(RTL_SIM) $(VFLAGS) -I ./rtl $^ -o inputs/aoc && cd inputs && ./aoc && rm aoc
 
 clean:
 	rm -f aoc *.vcd *.gtkw rtl/converted.v

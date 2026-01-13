@@ -1,25 +1,31 @@
 ## Submission
 
-### This submission includes the source code for 6 problems (Days 1-5, Day 7). Every solution is implemented in CPP first (as I felt it was quicker to debug the algorithms).
+### This submission includes the source code for 6 problems (Days 1-5, Day 7). Every solution is implemented in CPP/Python first (as I felt it was quicker to debug the algorithms). The software source is left to give an alternative view of the algorithms implemented.
+
+I am using **Icarus Verilog version 11.0** to simulate the RTL. I do not have access to my University's Synopsys license so designs were not synthesized, however I was careful to only use constructs I knew worked from previous experience.
 
 ## Directory Structure
 ```
 .
-|- rtl/
-    |- src/
-    |- tb/
-|- sw/
-|- inputs/
+├── inputs
+├── rtl
+│   ├── src
+│   └── tb
+└── sw
 ```
 
-- The SW contains the CPP/Python code. The inputs are my generated AOC puzzle inputs and the rtl directory contains all the SystemVerilog.
-- The Makefile automates all deployment. "make aocN_ext" can be used to automatically run any of the scripts or eleborate and simulate the rtl. 
+- inputs: my AOC puzzle inputs, labelled for the day accordingly.
+- rtl/src: all designs. For hierarchical designs, the top-level module is labelled by the day. (ex. aoc5.sv is top)
+- rtl/tb: tb's for the designs. handles string parsing and deployment. Also written in systemVerilog.
+- sw: cpp/python implementation of algorithms. the aocN_hw variants are closer but not always direct models of the hw version I later implemented.
 
-For example. day 1 sv and cpp can be used via
+All designs can be ran using the *Makefile* in the root. The pattern is "make aocN_ext" where **N** is the day and **ext** is sv/cpp/py.
 ```
 make aoc1_sv
 make aoc1_hw_cpp
 ```
+There is a script called run_all.sh that can be used to automatically deploy all implemented designs using the RTL simulator.
+
 
 ## 1
 Instead of simulating the turning of the counter I calculate endpoints pre-emptively and tally zeros accordingly. The implementation for this is relatively straightforward from the CPP version because the algorithm is simple. Because I use division/mods by constants I also abstracted the calculation into a slightly different shift-multiply operation to reduce critical path delays. 

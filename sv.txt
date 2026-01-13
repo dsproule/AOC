@@ -1,1 +1,0 @@
-iverilog -g2012 -I ./rtl rtl/src/aoc5.sv rtl/tb/aoc5_tb.sv rtl/src/single_port_ram.sv rtl/src/aoc5_sorter_8.sv rtl/src/aoc5_mem.sv rtl/src/aoc5_bitonic.sv rtl/src/aoc5_sort_phase.sv rtl/src/aoc5_merge_phase.sv -o inputs/aoc && cd inputs && ./aoc && rm aoc
