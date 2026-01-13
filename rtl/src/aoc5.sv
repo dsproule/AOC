@@ -38,7 +38,7 @@ module top (
 
                 // dataflow
                 even_data_in_pingpong[PING] = tb_even_data_in;
-                odd_data_in_pingpong[PING] = tb_odd_data_in;
+                odd_data_in_pingpong[PING]  = tb_odd_data_in;
 
                 write_en_pingpong[PING] = data_valid_in;
             end

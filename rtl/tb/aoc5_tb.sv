@@ -198,12 +198,21 @@ module aoc5_tb;
         @(negedge clock);
         stream_done_in = 0;
         @(posedge dut.sort_done)
-        // print_pong(2);
-        repeat (450) @(negedge clock);
+        @(negedge dut.merge_phase_inst.merge_width_done);
+        // first real cycle
+        @(negedge dut.merge_phase_inst.merge_width_done);
+        // print_ping(200);
+        @(negedge dut.merge_phase_inst.merge_width_done);
+        // print_pong(200);
+        @(negedge dut.merge_phase_inst.merge_width_done);
+        print_ping(200);
+        @(negedge dut.merge_phase_inst.merge_width_done);
+        print_pong(200);
+        // @(negedge dut.merge_phase_inst.merge_width_done);
+        // repeat (450) @(negedge clock);
         
         // print_mem;
         // print_merge_regs;
-        print_ping(200);
         $display("Done loading data");
         $fclose(fd);
         $finish;

@@ -21,7 +21,8 @@ module merge_phase(
     int merge_width;
     
     logic [1:0] ptr_done;
-    logic [`BANK_ADDR_WIDTH-1:0] ptr_head [2], ptr_end [2], next_ptr_end [2];
+    logic [`BANK_ADDR_WIDTH-1:0] ptr_head [2], ptr_end [2];
+    int next_ptr_end [2];
     
     logic [`BANK_ADDR_WIDTH-1:0] ptr_head_0_dbg, ptr_head_1_dbg;
     logic [`BANK_ADDR_WIDTH-1:0] ptr_end_0_dbg, ptr_end_1_dbg;
@@ -77,37 +78,14 @@ module merge_phase(
             read_valid       <=  3;
             stage_insert     <= 1'b0;
         end else if (en_in) begin
-            read_valid <= next_read_valid;
-
-            // set the next merge-cycle
-            if (merge_width_done) begin
-                entry_valid      <= '0; 
-                pingpong         <= ~pingpong;
-                
-                ptr_head[0]      <= '0;
-                ptr_head[1]      <= (merge_width << 1);
-                ptr_end[0]       <= (merge_width << 1);
-                ptr_end[1]       <= (merge_width << 2);
-
-                merge_width      <= (merge_width << 1);
-                merge_width_done <= 1'b0;
-            end else begin
-                // save incoming values
-                if (read_valid == 0 && !entry_valid[0]) begin
-                    {front_pair[0], back_pair[0]} <= {even_data_in, odd_data_in};
-                    entry_valid[0] <= 1'b1;
-                end else if (read_valid == 1 && !entry_valid[1]) begin
-                    {front_pair[1], back_pair[1]} <= {even_data_in, odd_data_in};
-                    entry_valid[1] <= 1'b1;
-                end
-
-            end
-
             write_en_out <= 1'b0;
             if (write_en_out) write_addr_out <= write_addr_out + 2;
 
             if (&ptr_done) begin
-                
+                if (ptr_head[0] >= stream_len_in || ptr_head[1] >= stream_len_in) begin
+                    merge_width_done <= 1'b1; 
+                    write_addr_out   <= '0;
+                end
                 entry_valid <= '0; 
                 ptr_head[0] <= ptr_head[0] + merge_width;
                 ptr_head[1] <= ptr_head[0] + (merge_width << 1);
@@ -138,6 +116,33 @@ module merge_phase(
                 write_en_out <= stage_insert;
                 stage_insert <= ~stage_insert;
             end
+
+            read_valid <= next_read_valid;
+
+            // set the next merge-cycle
+            if (merge_width_done) begin
+                entry_valid      <= '0; 
+                pingpong         <= ~pingpong;
+                
+                ptr_head[0]      <= '0;
+                ptr_head[1]      <= (merge_width << 1);
+                ptr_end[0]       <= (merge_width << 1);
+                ptr_end[1]       <= (merge_width << 2);
+
+                merge_width      <= (merge_width << 1);
+                merge_width_done <= 1'b0;
+            end else begin
+                // save incoming values
+                if (read_valid == 0 && !entry_valid[0]) begin
+                    {front_pair[0], back_pair[0]} <= {even_data_in, odd_data_in};
+                    entry_valid[0] <= 1'b1;
+                end else if (read_valid == 1 && !entry_valid[1]) begin
+                    {front_pair[1], back_pair[1]} <= {even_data_in, odd_data_in};
+                    entry_valid[1] <= 1'b1;
+                end
+
+            end
+
         end
     end
 
