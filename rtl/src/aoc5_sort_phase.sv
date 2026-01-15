@@ -56,7 +56,7 @@ module sort_phase (
                 `index_flat(sort_16_pairs_in_flat, insert_i)     <= even_data_in;
                 `index_flat(sort_16_pairs_in_flat, insert_i + 1) <= odd_data_in;
 
-                // if mod_6 -> latch parity
+                // if mod_6 -> latch parity (clock div by 2)
                 if ((ping_addr_out & 4'hF) == '0 && ping_addr_out != '0) begin
                     sort_16_in_valid  <= 1'b1;
                     sort_stage_parity <= parity_clock_in;

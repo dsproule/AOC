@@ -14,6 +14,8 @@ module merger_N #(
     localparam ARR_N_FLAT_WIDTH = N * $bits(tuple_pair_t);
     localparam ARR_N_HALF_FLAT_WIDTH = (N >> 1) * $bits(tuple_pair_t);
 
+    // generalization of pattern at bottom: https://courses.grainger.illinois.edu/cs473/fa2023/lec/notes/04_sortnet.pdf
+
     generate
         if (N > 1) begin : recursion
             tuple_pair_t pairs_in_unpack [N];
@@ -76,6 +78,7 @@ module bitonic_sort_16 (
     logic sort_8_done, top_low_sel;
     bitonic_states_t bitonics_ready, next_bitonics_ready;
 
+    // turn random sequence into bitonic /\
     sorter_8 sort_8 (
         .clock(clock), .reset(reset), 
         .valid_in(valid_in), .asc_in(top_low_sel),
@@ -98,6 +101,7 @@ module bitonic_sort_16 (
         end else if (bitonics_ready == LOAD_BOTH) next_bitonics_ready = LOAD_NONE;
     end
 
+    // recursive call of bitonic network
     merger_N #(.N(16)) merge (
         .clock(clock), .reset(reset),
         .valid_in(&bitonics_ready), .pairs_in_flat({top_stage, low_stage}),

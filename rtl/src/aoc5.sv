@@ -193,6 +193,7 @@ module top (
         .final_sum_out(final_sum_out)
     );
 
+    // activate next phase of above
     always_ff @(posedge clock) begin
         if (reset) begin
             phase_state <= DATA_INIT;

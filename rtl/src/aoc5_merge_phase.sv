@@ -87,6 +87,7 @@ module merge_phase(
             write_en_out <= 1'b0;
             if (write_en_out) write_addr_out <= write_addr_out + 2;
 
+            // if we finish traversing both streams
             if (&ptr_done) begin
                 if (ptr_head[0] >= stream_len_in || ptr_head[1] >= stream_len_in) begin
                     merge_width_done <= 1'b1; 
@@ -97,6 +98,7 @@ module merge_phase(
                     pingpong         <= ~pingpong;
                     merge_width_done <= 1'b0;
                 end
+                // next init for merge
                 entry_valid <= '0; 
                 ptr_head[0] <= ptr_head[0] + merge_width;
                 ptr_head[1] <= ptr_head[0] + (merge_width << 1);

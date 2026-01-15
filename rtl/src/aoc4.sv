@@ -73,7 +73,6 @@ module top(
         end 
     endgenerate
 
-    // if there is a change -> redeploy all machines
     int add_i;
     logic run_started, final_sum;
     always_ff @(posedge clock) begin
@@ -87,6 +86,7 @@ module top(
             add_i       <= add_i + 1;
             updates_out <= updates_out + updates[add_i];
         end else if (run_started) begin
+            // if there is a change -> redeploy all machines
             re_run <= 1'b0;
             if (&mach_done_out) begin
                 if (~|mach_changed_out) final_sum <= 1'b1;

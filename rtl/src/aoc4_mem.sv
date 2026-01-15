@@ -67,13 +67,12 @@ module mem (
             if (fetch_state == FETCH_SAVE) begin
                 bank_vec_stable     <= (!dirty_list[row_addr_in]) ? '0 : bank_read_data;
                 bank_vec_addr_saved <= row_addr_in;     // assumed to not change during fetch
-                if (write_en) begin
 
+                mem_init <= 1'b1;
+                if (write_en) begin
                     bank_vec_stable[`VEC_OFFSET(col_addr_in) + pad_en +: `TX_DATA_WIDTH] <= partial_vec_in;
                     dirty_list[row_addr_in] <= 1'b1;
                 end
-
-                mem_init <= 1'b1;
             end else if (addr_saved && write_en && fetch_state == IDLE) bank_vec_stable[`VEC_OFFSET(col_addr_in) + pad_en +: `TX_DATA_WIDTH] <= partial_vec_in;
         end
     end

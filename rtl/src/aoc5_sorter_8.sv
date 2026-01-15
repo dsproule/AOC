@@ -21,6 +21,8 @@ module sorter_8 (
             pairs_in_unpack[i] = `index_flat(pairs_in_flat, i);
     end
 
+    // implemented diagram of 8 inputs: https://bertdobbelaere.github.io/sorting_networks.html
+
     // stage 1
     always_ff @(posedge clock) begin
         if (reset) begin

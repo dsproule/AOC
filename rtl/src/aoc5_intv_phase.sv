@@ -39,6 +39,7 @@ module intv_phase (
             if (read_addr_out < stream_len_in && read_en_out) read_addr_out <= read_addr_out + 1;
 
             if (intv_sweep_started) begin
+                // interval merge or accumulation
                 if (cur_intv.first <= prev_intv.second)
                     prev_intv.second <= (cur_intv.second > prev_intv.second) ? cur_intv.second : prev_intv.second;
                 else begin
