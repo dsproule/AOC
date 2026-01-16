@@ -164,5 +164,8 @@ Stage 3 is O(N), we need to traverse the entire array once.
 The hardware acceleration for this challenge is very simple. Our goal is to keep track of down-stream beams and split when there is a collision between the beam and a splitter. To do so, we process each row as a unit, and use a single circular shift register that maintains the current possible beam distributions. We rotate the array and evaluate only the front element, if there is a collision between a possible beam and splitter, we apply the updates into the register in place until we get to the final row where we sum up the values.
 
 ## About Me
-- 
-I recently graduated with an MS and BS in Computer Engineering from Columbia University. I have a very heavy hardware/software background and am extremely interested in pursuing this style of algorithmic, hardware development post-grad. I've really found a passion for low-level software work and RTL design, luckily they go hand in hand. I was going to pursue the HardCaml implementation of my simpler designs because I have light experience with Chisel and off initial impressions, they seemed similar. However, due to travelling/graduation I was unable to get around to it. I've placed my resume in the root directory as well in case the team may be interested but regardless, I hope you enjoyed my solutions, I enjoyed the challenge of solving these algorithmically and creating hardware accelerators.
+I recently graduated from Columbia University with both a B.S. and M.S. in Computer Engineering. I have a strong hardware–software background and am particularly interested in algorithmic hardware development post-graduation.
+
+I initially planned to pursue a HardCaml implementation of some of my simpler designs, given my prior exposure to Chisel and the conceptual similarities between the two, but was unable to do so due to graduation and travel timing being a busy time.
+
+I’ve included my resume in the root directory in case the team is interested. Regardless, I hope you enjoy reviewing my solutions. I found the challenge of solving these problems algorithmically and translating them into hardware accelerators to be very enjoyable!
